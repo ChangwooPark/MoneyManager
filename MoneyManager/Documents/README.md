@@ -20,6 +20,7 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | 파일 | 내용 |
 |------|------|
 | [09-phase6-frontend-setup.md](./09-phase6-frontend-setup.md) | 아키텍처 결정(역할 분리), Next.js 초기 설정, API 클라이언트, CORS |
+| [10-phase7-pin-auth.md](./10-phase7-pin-auth.md) | PIN 인증 화면, AppShell 세션 관리, sessionStorage, 'use client' 개념 |
 
 ## 빠른 참조
 
