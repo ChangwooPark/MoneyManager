@@ -4,3 +4,7 @@ dist/
 .env.local
 *.key
 *.json.key
+
+# Playwright MCP 세션 로그 (자동 생성, 커밋 불필요)
+.playwright-mcp/
+commands/
