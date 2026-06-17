@@ -27,10 +27,11 @@ html, body {
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
 
-/* 바텀 시트 모달 최대 높이 — dvh 미지원 브라우저를 위한 vh 폴백 포함
-   dvh(Dynamic Viewport Height): 아이폰 크롬 주소창·탭바가 표시될 때도 실제 가시 높이를 기준으로 계산
-   vh: CSS 레이아웃 뷰포트(844px) 기준이라 모바일 브라우저 UI가 보이면 모달 하단이 잘릴 수 있음 */
+/* 바텀 시트 모달 최대 높이 — dvh + iOS Safe Area 동시 대응
+   dvh(Dynamic Viewport Height): 크롬 주소창·탭바가 표시될 때도 실제 가시 높이 기준 계산
+   env(safe-area-inset-bottom): iOS PWA(홈 앱) 모드의 홈 인디케이터 영역(약 34px) 제외
+   → 홈 인디케이터 뒤로 시트가 내려가 저장 버튼이 가려지는 문제 방지 */
 .modal-sheet-max-height {
   max-height: 90vh;    /* 폴백: dvh 미지원 구형 브라우저 */
-  max-height: 90dvh;   /* 우선 적용: Chrome 108+, Safari 15.4+, iOS 16+ */
+  max-height: calc(90dvh - env(safe-area-inset-bottom, 0px));  /* PWA + 브라우저 모드 통합 대응 */
 }

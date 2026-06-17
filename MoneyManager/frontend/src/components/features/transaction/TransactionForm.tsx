@@ -104,7 +104,15 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
           <div className="w-10 h-1 rounded-full" style={{ backgroundColor: 'var(--border)' }} />
         </div>
 
-        <div className="px-5 pb-8 pt-2 flex flex-col gap-5">
+        {/* px-5: 좌우 패딩
+            pt-2: 핸들 바 아래 상단 여백
+            pb: 기본 2rem(pb-8)에 iOS 홈 인디케이터 safe area 추가 —
+                브라우저 모드에서는 0이므로 영향 없음, PWA 모드에서는 ~34px 추가되어
+                저장 버튼이 홈 인디케이터 뒤로 숨는 문제 방지 */}
+        <div
+          className="px-5 pt-2 flex flex-col gap-5"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+        >
 
           {/* ── 헤더: 제목 + 닫기 버튼 ─────────────────────── */}
           <div className="flex items-center justify-between">
