@@ -75,12 +75,16 @@ jobs:
           VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
 
       # vercel build: Next.js 프로덕션 빌드 실행
+      # NEXT_PUBLIC_API_URL을 명시적으로 주입 —
+      # Vercel에 암호화 타입으로 저장된 경우 vercel pull이 빈 문자열을 반환하므로
+      # 여기서 직접 값을 넣어 빌드 시 올바른 백엔드 URL이 번들에 포함되게 함
       - name: Build project
         working-directory: MoneyManager/frontend
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: team_C6F9p19SH8pOyJxy7x8OtS82
           VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
+          NEXT_PUBLIC_API_URL: https://money-manager-1094294666571.asia-northeast3.run.app
 
       # vercel deploy --prebuilt: 빌드 결과물을 Vercel Production에 배포
       - name: Deploy to Vercel Production

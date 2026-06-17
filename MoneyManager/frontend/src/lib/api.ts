@@ -1,6 +1,8 @@
 import { Transaction, Budget } from '@/types';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+// ?? 대신 || 사용: 빈 문자열("")도 폴백으로 처리하기 위함
+// Vercel의 암호화 환경변수는 vercel pull 시 빈 문자열로 내려오므로 || 로 방어
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
