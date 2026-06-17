@@ -27,7 +27,7 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/money-manager/account-book:${{ github.sha }}
-          docker build -t $IMAGE .
+          docker build -t $IMAGE MoneyManager/
           docker push $IMAGE
 
       - name: Deploy to Cloud Run
