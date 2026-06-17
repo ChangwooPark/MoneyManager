@@ -24,6 +24,7 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | [11-phase8-layout-navigation.md](./11-phase8-layout-navigation.md) | 공통 레이아웃, 하단 탭바, 연월 선택기, 상태 끌어올리기, Props 개념 |
 | [12-vercel-deployment.md](./12-vercel-deployment.md) | Vercel 개념, 배포 과정, CORS 설정, CDN, 자동 배포 흐름 |
 | [13-phase9-transaction-form.md](./13-phase9-transaction-form.md) | FAB 버튼, 바텀 시트 입력 폼, 수입/지출 토글, Firestore 저장 흐름 |
+| [14-cicd-vercel-github-actions.md](./14-cicd-vercel-github-actions.md) | Vercel 자동 배포 문제 원인, 토큰 발급, GitHub Actions에 Vercel job 추가 |
 
 ## 빠른 참조
 
