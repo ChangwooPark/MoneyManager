@@ -91,15 +91,12 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
     >
       {/* ── 바텀 시트 본체 ────────────────────────────────────
           stopPropagation: 폼 내부 클릭이 오버레이 클릭으로 전파되는 것을 막음
-          max-h-[90vh]: 화면의 90% 이상을 차지하지 않도록 최대 높이 제한
+          modal-sheet-max-height: max-height 90dvh (아이폰 크롬 브라우저 UI 대응, globals.css 정의)
           overflow-y-auto: 내용이 길면 폼 내부에서 스크롤 (키보드 올라와도 레이아웃 유지)
       */}
       <div
-        className="rounded-t-2xl overflow-y-auto"
-        style={{
-          backgroundColor: 'var(--bg-secondary)',
-          maxHeight: '90vh',
-        }}
+        className="rounded-t-2xl overflow-y-auto modal-sheet-max-height"
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── 상단 핸들 바 (드래그 힌트용 UI) ──────────────── */}
