@@ -67,12 +67,15 @@ Firestore (데이터베이스)
 
 ## 프론트엔드 구현 로드맵
 
-### Phase 6: Next.js 프로젝트 초기 설정
-- [ ] Next.js (App Router) + TypeScript 프로젝트 생성
-- [ ] Tailwind CSS 설정 (다크 테마)
-- [ ] Firebase/Firestore 클라이언트 SDK 연동
-- [ ] 공통 타입 정의 (`Transaction`, `Budget`, `Settings` 인터페이스)
-- [ ] 환경 변수 설정 (`.env.local` - Firestore 접속 정보)
+### Phase 6: Next.js 프로젝트 초기 설정 ✅ 완료
+- [x] Next.js (App Router) + TypeScript 프로젝트 생성
+- [x] Tailwind CSS 설정 (다크 테마 - CSS 변수 기반)
+- [x] 백엔드 API 클라이언트 구현 (`src/lib/api.ts`) ← Firebase 직접 연결 대신 역할 분리 결정으로 변경
+- [x] 공통 타입 정의 (`Transaction`, `Budget`, `TabType` 인터페이스)
+- [x] 환경 변수 설정 (`.env.local` - `NEXT_PUBLIC_API_URL` 백엔드 URL)
+- [x] 백엔드 PIN·예산 API 엔드포인트 추가 (`/settings`, `/budgets`)
+- [x] 백엔드 거래 내역 연월 필터 추가 (`?yearMonth=YYYY-MM`)
+- [x] 백엔드 CORS 설정 (프론트엔드 도메인 허용)
 
 ### Phase 7: 인증 시스템 (4자리 PIN)
 - [ ] PIN 입력 화면 구현 (앱 최초 진입 시 노출)
