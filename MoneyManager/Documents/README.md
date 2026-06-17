@@ -25,6 +25,7 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | [12-vercel-deployment.md](./12-vercel-deployment.md) | Vercel 개념, 배포 과정, CORS 설정, CDN, 자동 배포 흐름 |
 | [13-phase9-transaction-form.md](./13-phase9-transaction-form.md) | FAB 버튼, 바텀 시트 입력 폼, 수입/지출 토글, Firestore 저장 흐름 |
 | [14-cicd-vercel-github-actions.md](./14-cicd-vercel-github-actions.md) | Vercel 자동 배포 문제 원인, 토큰 발급, GitHub Actions에 Vercel job 추가 |
+| [15-debug-env-var-empty.md](./15-debug-env-var-empty.md) | 트러블슈팅: 프로덕션 PIN 인증 실패 — 암호화 환경변수 빈 값 문제, curl 분석, ?? vs \|\| |
 
 ## 빠른 참조
 
