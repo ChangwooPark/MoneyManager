@@ -23,6 +23,7 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | [10-phase7-pin-auth.md](./10-phase7-pin-auth.md) | PIN 인증 화면, AppShell 세션 관리, sessionStorage, 'use client' 개념 |
 | [11-phase8-layout-navigation.md](./11-phase8-layout-navigation.md) | 공통 레이아웃, 하단 탭바, 연월 선택기, 상태 끌어올리기, Props 개념 |
 | [12-vercel-deployment.md](./12-vercel-deployment.md) | Vercel 개념, 배포 과정, CORS 설정, CDN, 자동 배포 흐름 |
+| [13-phase9-transaction-form.md](./13-phase9-transaction-form.md) | FAB 버튼, 바텀 시트 입력 폼, 수입/지출 토글, Firestore 저장 흐름 |
 
 ## 빠른 참조
 

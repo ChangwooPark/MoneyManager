@@ -8,6 +8,7 @@ import HomeTab from './features/home/HomeTab';
 import CalendarTab from './features/calendar/CalendarTab';
 import StatsTab from './features/stats/StatsTab';
 import MoreTab from './features/more/MoreTab';
+import TransactionForm from './features/transaction/TransactionForm';
 
 // ─── 현재 연월 계산 함수 ────────────────────────────────────────
 // 앱 최초 실행 시 오늘 날짜 기준의 연월을 기본값으로 사용합니다.
@@ -45,13 +46,25 @@ export default function MainApp() {
   // 현재 선택된 연월 상태 (기본값: 오늘 기준 연월)
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth());
 
+  // 거래 입력 폼 표시 여부 상태
+  // true이면 TransactionForm 바텀시트가 화면에 표시됨
+  const [showForm, setShowForm] = useState(false);
+
+  // 거래 목록 강제 갱신을 위한 카운터
+  // 저장 성공 시 +1 → HomeTab이 이 값을 의존성으로 받으면 자동으로 목록 재조회
+  const [refreshKey, setRefreshKey] = useState(0);
+
   // 현재 탭이 연월 선택기를 표시해야 하는 탭인지 여부
   const showMonthSelector = TABS_WITH_MONTH_SELECTOR.includes(activeTab);
+
+  // 저장 완료 후 호출 — 목록 갱신 트리거
+  const handleSaved = () => setRefreshKey((k) => k + 1);
 
   return (
     // h-full: 부모(body)의 전체 높이를 채움
     // flex flex-col: 상단 선택기 / 중간 컨텐츠 / 하단 탭바를 세로로 배치
-    <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    // relative: FAB 버튼을 이 컨테이너 기준으로 절대 위치 지정하기 위해 필요
+    <div className="flex flex-col h-full relative" style={{ backgroundColor: 'var(--bg-primary)' }}>
 
       {/* 상단 연월 선택기 — 더보기 탭에서는 렌더링 자체를 생략 */}
       {showMonthSelector && (
@@ -63,16 +76,41 @@ export default function MainApp() {
           overflow-y-auto: 내용이 길면 세로 스크롤 활성화 */}
       <main className="flex-1 overflow-y-auto">
         {/* 조건부 렌더링: 활성 탭에 해당하는 컴포넌트만 표시
-            yearMonth를 props로 전달해 각 탭이 해당 월 데이터를 조회할 수 있게 함 */}
-        {activeTab === 'home'     && <HomeTab     yearMonth={yearMonth} />}
+            yearMonth를 props로 전달해 각 탭이 해당 월 데이터를 조회할 수 있게 함
+            refreshKey: 저장 완료 시 변경되어 각 탭의 데이터를 재조회하게 함 */}
+        {activeTab === 'home'     && <HomeTab     yearMonth={yearMonth} refreshKey={refreshKey} />}
         {activeTab === 'calendar' && <CalendarTab yearMonth={yearMonth} />}
         {activeTab === 'stats'    && <StatsTab    yearMonth={yearMonth} />}
         {activeTab === 'more'     && <MoreTab />}
       </main>
 
+      {/* ── FAB (Floating Action Button) ─────────────────────────────
+          화면 우하단에 고정된 '+' 버튼입니다.
+          클릭 시 거래 입력 폼(TransactionForm)이 열립니다.
+          bottom-20: 탭바(64px) 위에 여유를 두고 배치
+          z-40: 탭바(z-index 미설정)보다 위에, 폼 오버레이(z-50)보다 아래
+      */}
+      <button
+        onClick={() => setShowForm(true)}
+        className="absolute bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl font-light shadow-lg active:scale-95 transition-transform z-40"
+        style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+        aria-label="거래 추가"
+      >
+        +
+      </button>
+
       {/* 하단 탭바 — flex-col 구조에서 항상 맨 아래에 위치
           BottomNav 내부에서 flexShrink:0 으로 높이 고정 */}
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+
+      {/* 거래 입력 폼 — showForm이 true일 때만 렌더링
+          onClose: 폼 닫기, onSaved: 저장 완료 후 목록 갱신 */}
+      {showForm && (
+        <TransactionForm
+          onClose={() => setShowForm(false)}
+          onSaved={handleSaved}
+        />
+      )}
     </div>
   );
 }
