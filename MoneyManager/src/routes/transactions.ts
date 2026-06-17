@@ -10,8 +10,9 @@ import {
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
-  const transactions = await getTransactions();
+router.get('/', async (req: Request, res: Response) => {
+  const yearMonth = req.query.yearMonth as string | undefined;
+  const transactions = await getTransactions(yearMonth);
   res.json(transactions);
 });
 
