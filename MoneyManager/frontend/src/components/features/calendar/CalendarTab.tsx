@@ -228,6 +228,7 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
               return (
                 <button
                   key={cell.dateStr}
+                  data-date={cell.dateStr}  /* 테스트에서 날짜로 셀을 특정하기 위한 속성 */
                   onClick={() => setSelectedDate(isSelected ? null : cell.dateStr)}
                   className="flex flex-col items-center py-1 px-0.5 rounded-xl active:opacity-70 transition-opacity min-h-[58px]"
                   style={{
