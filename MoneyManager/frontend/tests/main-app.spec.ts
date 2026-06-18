@@ -108,8 +108,8 @@ test.describe('메인 앱 화면', () => {
   test('달력 탭 클릭 시 달력 탭이 활성화되고 달력 콘텐츠가 표시된다', async ({ page }) => {
     await page.getByRole('button', { name: /달력/ }).click();
 
-    // 달력 콘텐츠 표시
-    await expect(page.getByText(/Phase 11/)).toBeVisible();
+    // 달력 콘텐츠 표시 (요일 헤더 확인)
+    await expect(page.getByText('일').first()).toBeVisible();
 
     // 달력 탭 색상이 accent로 변경
     const nav = page.getByRole('navigation');
@@ -120,12 +120,14 @@ test.describe('메인 앱 화면', () => {
 
   test('통계 탭 클릭 시 통계 콘텐츠가 표시된다', async ({ page }) => {
     await page.getByRole('button', { name: /통계/ }).click();
-    await expect(page.getByText(/Phase 12/)).toBeVisible();
+    // 통계 탭: 수입/지출 전환 탭 버튼이 존재
+    await expect(page.getByRole('button', { name: '지출' })).toBeVisible();
   });
 
   test('더보기 탭 클릭 시 더보기 콘텐츠가 표시된다', async ({ page }) => {
     await page.getByRole('button', { name: /더보기/ }).click();
-    await expect(page.getByText(/Phase 13/)).toBeVisible();
+    // 더보기 탭: 카테고리 관리 메뉴가 존재
+    await expect(page.getByText('카테고리 관리')).toBeVisible();
   });
 
   test('탭 전환 시 이전 탭의 콘텐츠는 사라진다', async ({ page }) => {
@@ -136,7 +138,8 @@ test.describe('메인 앱 화면', () => {
     // 달력으로 전환 → 홈 탭 예산 대시보드가 사라짐
     await page.getByRole('button', { name: /달력/ }).click();
     await expect(page.getByText('예산').first()).not.toBeVisible();
-    await expect(page.getByText(/Phase 11/)).toBeVisible();
+    // 달력 탭: 요일 헤더가 표시됨
+    await expect(page.getByText('일').first()).toBeVisible();
   });
 
   // ─── 3. 월 선택기 ───────────────────────────────────────────
@@ -158,8 +161,9 @@ test.describe('메인 앱 화면', () => {
 
   test('더보기 탭에서는 월 선택기가 숨겨진다', async ({ page }) => {
     await page.getByRole('button', { name: /더보기/ }).click();
+    // 월 이동 버튼이 없어야 함 (MonthSelector 미표시)
     await expect(page.getByRole('button', { name: '이전 달' })).not.toBeVisible();
-    await expect(page.getByText(getCurrentMonthLabel())).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '다음 달' })).not.toBeVisible();
   });
 
   test('이전 달 버튼 클릭 시 1개월 전으로 변경된다', async ({ page }) => {

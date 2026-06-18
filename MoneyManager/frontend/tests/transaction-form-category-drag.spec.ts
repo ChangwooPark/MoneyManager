@@ -30,10 +30,20 @@ const EXPENSE_ONLY = ['식비', '교통', '쇼핑', '의료', '통신', '여가'
 const INCOME_ONLY  = ['급여', '부업', '이자', '보너스'] as const;
 
 // ── 헬퍼: PIN API 모킹 후 메인 앱으로 이동 ──────────────────────
+// Phase 13에서 TransactionForm이 카테고리를 API에서 가져오도록 변경됨
+// 실제 API 응답이 FALLBACK을 덮어쓸 수 있으므로 카테고리 API도 함께 모킹
 async function goToMainApp(page: Page): Promise<void> {
   await page.route('**/settings/pin/verify', route =>
     route.fulfill({ json: { success: true } })
   );
+  await page.route('**/categories*', route => {
+    const url = route.request().url();
+    const type = url.includes('type=income') ? 'income' : 'expense';
+    const names = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    route.fulfill({
+      json: names.map((name, i) => ({ id: String(i + 1), name, type })),
+    });
+  });
   await page.goto('/');
   for (const num of ['1', '2', '3', '4']) {
     await page.getByRole('button', { name: num, exact: true }).click();
