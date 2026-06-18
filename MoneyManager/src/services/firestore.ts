@@ -42,6 +42,61 @@ export async function setBudget(yearMonth: string, amount: number): Promise<Budg
   return { id: ref.id, yearMonth, amount };
 }
 
+// ─── Categories ──────────────────────────────────────────────
+
+export interface Category {
+  id?: string;
+  type: 'income' | 'expense';
+  name: string;
+  order: number;
+}
+
+// 카테고리가 DB에 없을 때 자동으로 채워넣을 기본값
+const DEFAULT_CATEGORIES: Record<'income' | 'expense', string[]> = {
+  expense: ['식비', '교통', '쇼핑', '의료', '통신', '여가', '공과금', '생활', '기타'],
+  income:  ['급여', '부업', '이자', '보너스', '기타'],
+};
+
+async function seedCategories(type: 'income' | 'expense'): Promise<void> {
+  const batch = db.batch();
+  DEFAULT_CATEGORIES[type].forEach((name, order) => {
+    const ref = db.collection('categories').doc();
+    batch.set(ref, { type, name, order });
+  });
+  await batch.commit();
+}
+
+export async function getCategories(type: 'income' | 'expense'): Promise<Category[]> {
+  const snapshot = await db.collection('categories').where('type', '==', type).get();
+
+  // DB가 비어있으면 기본 카테고리를 자동 등록 후 다시 조회
+  if (snapshot.empty) {
+    await seedCategories(type);
+    const seeded = await db.collection('categories').where('type', '==', type).get();
+    return seeded.docs
+      .map(doc => ({ id: doc.id, ...(doc.data() as Omit<Category, 'id'>) }))
+      .sort((a, b) => a.order - b.order);
+  }
+
+  return snapshot.docs
+    .map(doc => ({ id: doc.id, ...(doc.data() as Omit<Category, 'id'>) }))
+    .sort((a, b) => a.order - b.order);
+}
+
+export async function addCategory(type: 'income' | 'expense', name: string): Promise<Category> {
+  // 기존 카테고리 중 가장 큰 order 값 파악 → 새 항목은 마지막에 추가
+  const existing = await getCategories(type);
+  const maxOrder = existing.length > 0 ? Math.max(...existing.map(c => c.order)) : -1;
+  const ref = await db.collection('categories').add({ type, name, order: maxOrder + 1 });
+  return { id: ref.id, type, name, order: maxOrder + 1 };
+}
+
+export async function deleteCategoryById(id: string): Promise<void> {
+  await db.collection('categories').doc(id).delete();
+}
+
+// ─────────────────────────────────────────────────────────────
+
 export interface Transaction {
   id?: string;
   type: 'income' | 'expense';

@@ -15,4 +15,11 @@ export interface Budget {
   amount: number;
 }
 
+export interface Category {
+  id: string;
+  type: 'income' | 'expense';
+  name: string;
+  order: number;
+}
+
 export type TabType = 'home' | 'calendar' | 'stats' | 'more';

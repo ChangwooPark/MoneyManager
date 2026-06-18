@@ -202,21 +202,21 @@ Firestore (데이터베이스)
 - [x] E2E 테스트 전체 통과 (chromium + Mobile Chrome, 40/40)
 - [x] 공부용 Documents 파일 작성 (`Documents/19-phase12-stats-tab.md`)
 
-### Phase 13: 더보기 화면
-- [ ] PIN 번호 변경 UI
-- [ ] 월별 목표 예산 설정 UI
+### ✅ Phase 13: 더보기 화면
+- [x] PIN 번호 변경 UI
+- [x] 월별 목표 예산 설정 UI
   - 당월 목표 예산 금액 입력 및 수정
   - Firestore `budgets` 컬렉션에 저장
-- [ ] 카테고리 관리 UI
-  - 현재 거래 입력 폼의 카테고리 칩은 코드에 하드코딩된 상태
+- [x] 카테고리 관리 UI
   - 지출/수입 카테고리 목록을 Firestore `categories` 컬렉션으로 이전하여 DB 관리
-  - 더보기 탭에서 카테고리 추가·수정·삭제 가능한 편집 화면 구현
-  - 백엔드 API(`GET/POST/PUT/DELETE /categories`) 추가 필요
+  - 더보기 탭에서 카테고리 추가·삭제 가능한 편집 화면 구현
+  - 백엔드 API(`GET /categories`, `POST /categories`, `DELETE /categories/:id`) 추가 및 Cloud Run 배포
+  - TransactionForm 카테고리 목록 → Firestore API 연동 (FALLBACK_CATEGORIES 패턴)
 
 **완료 체크리스트**
-- [ ] E2E 테스트 코드 작성
-- [ ] E2E 테스트 전체 통과
-- [ ] 공부용 Documents 파일 작성
+- [x] E2E 테스트 코드 작성 (`tests/more-tab.spec.ts` — 18개)
+- [x] E2E 테스트 전체 통과 ✅ (Chromium + Mobile Chrome 36/36)
+- [x] 공부용 Documents 파일 작성 (`Documents/20-phase13-more-tab.md`)
 
 ### Phase 14: 홈·달력 탭 UX 개선 (Phase 11~13 완료 후 진행)
 

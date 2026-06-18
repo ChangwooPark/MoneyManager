@@ -2,6 +2,7 @@ import express from 'express';
 import transactionsRouter from './routes/transactions';
 import settingsRouter from './routes/settings';
 import budgetsRouter from './routes/budgets';
+import categoriesRouter from './routes/categories';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -31,6 +32,7 @@ app.get('/health', (_req, res) => {
 app.use('/transactions', transactionsRouter);
 app.use('/settings', settingsRouter);
 app.use('/budgets', budgetsRouter);
+app.use('/categories', categoriesRouter);
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { createTransaction } from '@/lib/api';
+import { useState, useRef, useEffect } from 'react';
+import { createTransaction, getCategories } from '@/lib/api';
 import { Transaction } from '@/types';
 
-// ─── 카테고리 목록 (수입/지출 구분) ────────────────────────────
-// 수입/지출 전환 시 카테고리가 초기화됨
-const CATEGORIES = {
+// API 조회 실패 시 사용할 기본 카테고리 목록
+const FALLBACK_CATEGORIES: Record<'income' | 'expense', string[]> = {
   expense: ['식비', '교통', '쇼핑', '의료', '통신', '여가', '공과금', '생활', '기타'],
   income:  ['급여', '부업', '이자', '보너스', '기타'],
-} as const;
+};
 
 // 이 픽셀 이상 아래로 드래그하면 모달이 닫힘
 const DISMISS_THRESHOLD = 100;
@@ -50,6 +49,21 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
   const [memo, setMemo]         = useState('');   // 메모 (선택 항목)
   const [loading, setLoading]   = useState(false);  // 저장 중 여부
   const [error, setError]       = useState('');     // 유효성 검사 오류 메시지
+
+  // ── API 카테고리 상태 ─────────────────────────────────────────
+  // 초기값: 하드코딩 폴백 → API 응답 도착 시 교체 (로딩 중 빈 화면 방지)
+  const [apiCategories, setApiCategories] = useState<Record<'income' | 'expense', string[]>>(FALLBACK_CATEGORIES);
+
+  useEffect(() => {
+    Promise.all([getCategories('expense'), getCategories('income')])
+      .then(([exp, inc]) => {
+        setApiCategories({
+          expense: exp.map(c => c.name),
+          income:  inc.map(c => c.name),
+        });
+      })
+      .catch(() => {}); // 실패 시 폴백 유지
+  }, []);
 
   // ── 드래그로 닫기 상태 ────────────────────────────────────────
   // dragStartY: ref 사용 — 터치 이동마다 state 업데이트 비용 절감
@@ -129,7 +143,7 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
 
   // ── 현재 선택된 타입에 따른 강조색 ───────────────────────────
   const accentColor = type === 'income' ? 'var(--income)' : 'var(--expense)';
-  const categories  = CATEGORIES[type];
+  const categories  = apiCategories[type];
   // 드래그 거리에 따라 오버레이를 점차 투명하게 (닫힐 것임을 시각적으로 표현)
   const overlayOpacity = Math.max(0.05, 0.6 - dragOffset / 400);
 

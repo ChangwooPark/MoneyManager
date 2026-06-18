@@ -1,4 +1,4 @@
-import { Transaction, Budget } from '@/types';
+import { Transaction, Budget, Category } from '@/types';
 
 // ?? 대신 || 사용: 빈 문자열("")도 폴백으로 처리하기 위함
 // Vercel의 암호화 환경변수는 vercel pull 시 빈 문자열로 내려오므로 || 로 방어
@@ -63,4 +63,21 @@ export function setBudget(yearMonth: string, amount: number): Promise<Budget> {
     method: 'PUT',
     body: JSON.stringify({ amount }),
   });
+}
+
+// ─── Categories ──────────────────────────────────────────────
+
+export function getCategories(type: 'income' | 'expense'): Promise<Category[]> {
+  return request<Category[]>(`/categories?type=${type}`);
+}
+
+export function addCategory(type: 'income' | 'expense', name: string): Promise<Category> {
+  return request<Category>('/categories', {
+    method: 'POST',
+    body: JSON.stringify({ type, name }),
+  });
+}
+
+export function deleteCategory(id: string): Promise<void> {
+  return request<void>(`/categories/${id}`, { method: 'DELETE' });
 }
