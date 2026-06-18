@@ -129,6 +129,17 @@ Firestore (데이터베이스)
 - [x] 거래 저장 후 refreshKey 트리거로 목록 자동 갱신
 - [x] 로딩 / 오류 / 빈 상태(empty state) 처리
 - [ ] Firestore 실시간 연동 (`onSnapshot`) ← 현재는 fetch 방식, 추후 개선 가능
+  - **현재 방식 (fetch + refreshKey)**: 사용자가 저장 버튼을 누를 때만 목록을 다시 불러옴
+  - **onSnapshot 방식**: Firestore DB가 바뀌는 순간 자동으로 화면이 갱신됨 (WebSocket 유사)
+  - **왜 지금은 어려운가**:
+    - 현재 구조: 프론트 → 백엔드 API → Firestore (프론트가 Firestore를 직접 보지 못함)
+    - `onSnapshot`은 Firestore에 직접 연결된 클라이언트가 소켓을 장시간 유지해야 함
+    - Vercel(프론트 배포 환경)의 서버리스 함수는 최대 30초 타임아웃 → 장시간 연결 불가
+  - **구현하려면**:
+    - 방법 A: 프론트에 Firebase 클라이언트 SDK 직접 추가 → 보안·인증 분리 원칙 재검토 필요
+    - 방법 B: 백엔드에서 SSE(Server-Sent Events) 구현 → Cloud Run은 가능하나 아키텍처 변경 필요
+  - **현재 앱에서 필요한가**: 1인 사용 가계부 앱이므로 `refreshKey` 방식으로 충분히 동작함
+    다중 기기 동시 사용 또는 다중 사용자 협업 시나리오가 생기면 그때 도입 검토
 
 #### Phase 10 추후 개선 항목 (홈 탭 UX)
 - [ ] **날짜 헤더 — 최종 잔액 표시**
