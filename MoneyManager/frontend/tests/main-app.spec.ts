@@ -239,19 +239,14 @@ test.describe('메인 앱 화면', () => {
     await expect(page.locator('input[type="date"]')).toHaveValue(getTodayString());
   });
 
-  test('내용 필드에 placeholder가 표시된다', async ({ page }) => {
+  test('메모 필드에 placeholder가 표시된다', async ({ page }) => {
     await openTransactionForm(page);
-    await expect(page.getByPlaceholder('예: 점심 식사, 교통비')).toBeVisible();
+    await expect(page.getByPlaceholder('예: 친구와 점심, 롯데마트')).toBeVisible();
   });
 
   test('금액 필드에 placeholder 0이 표시된다', async ({ page }) => {
     await openTransactionForm(page);
     await expect(page.getByPlaceholder('0')).toBeVisible();
-  });
-
-  test('메모 필드에 placeholder가 표시된다', async ({ page }) => {
-    await openTransactionForm(page);
-    await expect(page.getByPlaceholder('추가 메모를 입력하세요')).toBeVisible();
   });
 
   test('금액 필드에 숫자만 입력 가능하다', async ({ page }) => {
@@ -264,16 +259,17 @@ test.describe('메인 앱 화면', () => {
     await expect(amountInput).toHaveValue('1000');
   });
 
-  test('내용 미입력 후 저장 시 유효성 오류 메시지가 표시된다', async ({ page }) => {
+  test('카테고리 미선택 후 저장 시 유효성 오류 메시지가 표시된다', async ({ page }) => {
     await openTransactionForm(page);
-    // 내용 비운 채 저장
+    // 카테고리 칩을 선택하지 않은 채로 저장
     await page.getByRole('button', { name: '저장' }).click();
-    await expect(page.getByText('카테고리를 입력해 주세요')).toBeVisible();
+    await expect(page.getByText('카테고리를 선택해 주세요')).toBeVisible();
   });
 
-  test('내용 입력 후 금액 미입력 시 금액 오류 메시지가 표시된다', async ({ page }) => {
+  test('카테고리 선택 후 금액 미입력 시 금액 오류 메시지가 표시된다', async ({ page }) => {
     await openTransactionForm(page);
-    await page.getByPlaceholder('예: 점심 식사, 교통비').fill('점심');
+    // 카테고리 칩 선택 후 금액 없이 저장
+    await page.getByRole('button', { name: '식비', exact: true }).click();
     await page.getByRole('button', { name: '저장' }).click();
     await expect(page.getByText('금액을 입력해 주세요')).toBeVisible();
   });
@@ -282,12 +278,13 @@ test.describe('메인 앱 화면', () => {
     // POST /transactions 성공 응답으로 모킹
     await page.route('**/transactions', route =>
       route.fulfill({
-        json: { id: '1', type: 'expense', date: getTodayString(), category: '점심', amount: 1000, description: '점심', createdAt: new Date().toISOString() }
+        json: { id: '1', type: 'expense', date: getTodayString(), category: '식비', amount: 1000, description: '식비', createdAt: new Date().toISOString() }
       })
     );
 
     await openTransactionForm(page);
-    await page.getByPlaceholder('예: 점심 식사, 교통비').fill('점심');
+    // 카테고리 칩 선택 후 금액 입력
+    await page.getByRole('button', { name: '식비', exact: true }).click();
     await page.getByPlaceholder('0').fill('1000');
     await page.getByRole('button', { name: '저장' }).click();
 
@@ -302,7 +299,8 @@ test.describe('메인 앱 화면', () => {
     );
 
     await openTransactionForm(page);
-    await page.getByPlaceholder('예: 점심 식사, 교통비').fill('점심');
+    // 카테고리 칩 선택 후 금액 입력
+    await page.getByRole('button', { name: '식비', exact: true }).click();
     await page.getByPlaceholder('0').fill('1000');
     await page.getByRole('button', { name: '저장' }).click();
 

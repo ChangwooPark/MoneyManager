@@ -42,10 +42,12 @@ export default defineConfig({
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 7'] },
     },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 14'] },
-    },
+    // Mobile Safari(WebKit)는 로컬 바이너리 Bus error 충돌로 비활성화
+    // CI 환경에서만 webkit 바이너리가 정상 동작하므로 로컬 실행에서 제외
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 14'] },
+    // },
   ],
 
   webServer: [
