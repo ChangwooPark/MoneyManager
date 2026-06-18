@@ -80,7 +80,7 @@ export default function MainApp() {
             refreshKey: 저장 완료 시 변경되어 각 탭의 데이터를 재조회하게 함 */}
         {activeTab === 'home'     && <HomeTab     yearMonth={yearMonth} refreshKey={refreshKey} />}
         {activeTab === 'calendar' && <CalendarTab yearMonth={yearMonth} refreshKey={refreshKey} />}
-        {activeTab === 'stats'    && <StatsTab    yearMonth={yearMonth} />}
+        {activeTab === 'stats'    && <StatsTab    yearMonth={yearMonth} refreshKey={refreshKey} />}
         {activeTab === 'more'     && <MoreTab />}
       </main>
 

@@ -191,15 +191,16 @@ Firestore (데이터베이스)
 - [x] E2E 테스트 전체 통과 ✅ (Chromium + Mobile Chrome 42/42)
 - [x] 공부용 Documents 파일 작성 (`Documents/17-phase11-calendar-tab.md`)
 
-### Phase 12: 통계 화면 (통계 탭)
-- [ ] 상단 [수입] / [지출] 전환 탭 구현
-- [ ] [내용 | 건수 | 금액] 헤더를 가진 카테고리별 리스트 뷰
-- [ ] 정렬 기능 (금액 오름차순/내림차순 토글)
+### ✅ Phase 12: 통계 화면 (통계 탭)
+- [x] 상단 [수입] / [지출] 전환 탭 구현
+- [x] [내용 | 건수 | 금액] 헤더를 가진 카테고리별 리스트 뷰
+- [x] 정렬 기능 (금액 오름차순/내림차순 토글)
+- [x] 카테고리별 비율 게이지 바 + 전체 합계 요약 행
 
 **완료 체크리스트**
-- [ ] E2E 테스트 코드 작성
-- [ ] E2E 테스트 전체 통과
-- [ ] 공부용 Documents 파일 작성
+- [x] E2E 테스트 코드 작성 (`tests/stats-tab.spec.ts` — 40개)
+- [x] E2E 테스트 전체 통과 (chromium + Mobile Chrome, 40/40)
+- [x] 공부용 Documents 파일 작성 (`Documents/19-phase12-stats-tab.md`)
 
 ### Phase 13: 더보기 화면
 - [ ] PIN 번호 변경 UI
