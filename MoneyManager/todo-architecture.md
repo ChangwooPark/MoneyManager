@@ -41,15 +41,27 @@ Firestore (데이터베이스)
 - [x] Express 서버 구현 (`process.env.PORT || 8080` 포트 사용)
 - [x] `@google-cloud/firestore` SDK 연동 및 거래 내역 CRUD 구현
 
+**완료 체크리스트**
+- E2E 테스트 — 해당 없음 (백엔드/인프라 페이즈)
+- [x] 공부용 Documents 파일 작성 (`Documents/02-local-development.md`)
+
 ### Phase 2: Docker 컨테이너화 ✅ 완료
 - [x] `package.json`에 빌드 스크립트 작성 (`tsc` 컴파일)
 - [x] Node.js 프로덕션용 멀티스테이지 `Dockerfile` 작성
 - [x] 로컬 컨테이너 실행 검증 (`docker build` & `docker run`, 포트 매핑 확인)
 
+**완료 체크리스트**
+- E2E 테스트 — 해당 없음 (백엔드/인프라 페이즈)
+- [x] 공부용 Documents 파일 작성 (`Documents/03-docker.md`)
+
 ### Phase 3: GCP 인프라 프로비저닝 ✅ 완료
 - [x] GCP 프로젝트 생성 및 결제 계정 연결 (프로젝트 ID: `money-manager-499703`)
 - [x] Firestore 데이터베이스 생성 (Native Mode, 리전: `asia-northeast3`)
 - [x] Artifact Registry Docker 저장소 생성 (리전: `asia-northeast3`)
+
+**완료 체크리스트**
+- E2E 테스트 — 해당 없음 (백엔드/인프라 페이즈)
+- [x] 공부용 Documents 파일 작성 (`Documents/04-gcp-infrastructure.md`)
 
 ### Phase 4: CI/CD 및 Cloud Run 배포 ✅ 완료
 - [x] Google Cloud SDK로 로컬 인증 (`gcloud auth login`)
@@ -59,9 +71,17 @@ Firestore (데이터베이스)
   - 비용 통제: `--max-instances=1` 설정
 - [x] GitHub Actions 자동 배포 연동 (main 브랜치 push 시 자동 배포)
 
+**완료 체크리스트**
+- E2E 테스트 — 해당 없음 (백엔드/인프라 페이즈)
+- [x] 공부용 Documents 파일 작성 (`Documents/05-cloud-run-deployment.md`, `Documents/07-github-actions.md`)
+
 ### Phase 5: 보안 및 검증 ✅ 완료
 - [x] Cloud Run Service Account에 `Cloud Datastore User` (Firestore) IAM 권한 부여
 - [ ] 커스텀 도메인 연결 (현재 미적용 - 추후 필요 시 진행)
+
+**완료 체크리스트**
+- E2E 테스트 — 해당 없음 (백엔드/인프라 페이즈)
+- [x] 공부용 Documents 파일 작성 (`Documents/06-iam-security.md`)
 
 ---
 
@@ -77,6 +97,10 @@ Firestore (데이터베이스)
 - [x] 백엔드 거래 내역 연월 필터 추가 (`?yearMonth=YYYY-MM`)
 - [x] 백엔드 CORS 설정 (프론트엔드 도메인 허용)
 
+**완료 체크리스트**
+- E2E 테스트 — 해당 없음 (초기 설정 단계, Phase 7+ 테스트에서 통합 검증됨)
+- [x] 공부용 Documents 파일 작성 (`Documents/09-phase6-frontend-setup.md`)
+
 ### Phase 7: 인증 시스템 (4자리 PIN) ✅ 완료
 - [x] PIN 입력 화면 구현 (앱 최초 진입 시 노출)
   - 초기 마스터 PIN: `8907` (Firestore `settings/app_settings` 도큐먼트와 비교)
@@ -87,6 +111,11 @@ Firestore (데이터베이스)
 - [x] `AppShell` 컴포넌트로 인증 상태 전역 관리
 - [ ] PIN 변경 기능 ('더보기' 탭 내 구현) ← Phase 13에서 UI와 함께 구현 예정
   - 백엔드 API(`PUT /settings/pin`)는 이미 완료
+
+**완료 체크리스트**
+- [x] E2E 테스트 코드 작성 (`tests/pin-screen.spec.ts`)
+- [x] E2E 테스트 전체 통과 ✅
+- [x] 공부용 Documents 파일 작성 (`Documents/10-phase7-pin-auth.md`)
 
 ### Phase 8: 공통 레이아웃 및 네비게이션 ✅ 완료
 - [x] 모바일 퍼스트 반응형 레이아웃
@@ -104,6 +133,11 @@ Firestore (데이터베이스)
 - [x] 각 탭 플레이스홀더 컴포넌트 생성 (`HomeTab`, `CalendarTab`, `StatsTab`, `MoreTab`)
 - [x] 모든 컴포넌트에 상세 한국어 주석 추가
 
+**완료 체크리스트**
+- [x] E2E 테스트 코드 작성 (`tests/main-app.spec.ts` — 레이아웃·네비게이션·탭 전환 항목)
+- [x] E2E 테스트 전체 통과 ✅
+- [x] 공부용 Documents 파일 작성 (`Documents/11-phase8-layout-navigation.md`)
+
 ### Phase 9: 거래 내역 입력 폼 ✅ 완료
 - [x] 플로팅 액션 버튼(FAB) `+` 버튼으로 바텀 시트 폼 진입 (우하단 고정, `MainApp.tsx`)
 - [x] 입력 필드 구현 (`TransactionForm.tsx`)
@@ -115,6 +149,15 @@ Firestore (데이터베이스)
 - [x] 모바일 가상 키보드 오픈 시 레이아웃 유지 (`overflow-y-auto` + `max-h-[90vh]`)
 - [x] 백엔드 API(`POST /transactions`) → Firestore `transactions` 컬렉션에 저장
 - [x] 저장 후 `refreshKey` 증가로 HomeTab 목록 재조회 트리거 연결 (Phase 10에서 활용)
+
+**완료 체크리스트**
+- [x] E2E 테스트 코드 작성
+  - `tests/main-app.spec.ts` (폼 유효성·저장·오류 항목)
+  - `tests/transaction-form-category-drag.spec.ts` (카테고리 칩·저장 API 연동)
+  - `tests/transaction-form-drag.spec.ts` (핸들 바 드래그·CDP 터치 에뮬레이션)
+  - `tests/transaction-form-viewport.spec.ts` (모바일 뷰포트·날짜 입력 위치)
+- [x] E2E 테스트 전체 통과 ✅
+- [x] 공부용 Documents 파일 작성 (`Documents/13-phase9-transaction-form.md`)
 
 ### Phase 10: 홈 화면 (일일 내역 탭) ✅ 완료
 - [x] 선택된 연월의 거래 내역을 일자별 그룹화하여 리스트 표시
@@ -130,16 +173,31 @@ Firestore (데이터베이스)
 - [x] 로딩 / 오류 / 빈 상태(empty state) 처리
 - [ ] Firestore 실시간 연동 (`onSnapshot`) ← Phase 14에서 개선 예정
 
+**완료 체크리스트**
+- [x] E2E 테스트 코드 작성 (`tests/home-tab.spec.ts` — 54개 테스트)
+- [x] E2E 테스트 전체 통과 ✅ (Chromium + Mobile Chrome 54/54)
+- [x] 공부용 Documents 파일 작성 (`Documents/16-phase10-home-tab.md`)
+
 ### Phase 11: 달력 화면 (달력 탭)
 - [ ] 월간 그리드 달력 구현 (7열)
   - 각 날짜에 총 수입/지출 금액 소형 텍스트 표시
   - 모바일 폭에 맞춰 폰트 크기 유동적 조절
 - [ ] 날짜 클릭 시 하단 시트(Bottom Sheet) 또는 모달로 해당 날짜 상세 내역 표시
 
+**완료 체크리스트**
+- [ ] E2E 테스트 코드 작성
+- [ ] E2E 테스트 전체 통과
+- [ ] 공부용 Documents 파일 작성
+
 ### Phase 12: 통계 화면 (통계 탭)
 - [ ] 상단 [수입] / [지출] 전환 탭 구현
 - [ ] [내용 | 건수 | 금액] 헤더를 가진 카테고리별 리스트 뷰
 - [ ] 정렬 기능 (금액 오름차순/내림차순 토글)
+
+**완료 체크리스트**
+- [ ] E2E 테스트 코드 작성
+- [ ] E2E 테스트 전체 통과
+- [ ] 공부용 Documents 파일 작성
 
 ### Phase 13: 더보기 화면
 - [ ] PIN 번호 변경 UI
@@ -151,6 +209,11 @@ Firestore (데이터베이스)
   - 지출/수입 카테고리 목록을 Firestore `categories` 컬렉션으로 이전하여 DB 관리
   - 더보기 탭에서 카테고리 추가·수정·삭제 가능한 편집 화면 구현
   - 백엔드 API(`GET/POST/PUT/DELETE /categories`) 추가 필요
+
+**완료 체크리스트**
+- [ ] E2E 테스트 코드 작성
+- [ ] E2E 테스트 전체 통과
+- [ ] 공부용 Documents 파일 작성
 
 ### Phase 14: 홈 탭 UX 개선 (Phase 11~13 완료 후 진행)
 - [ ] **날짜 헤더 — 최종 잔액 표시**
@@ -180,6 +243,11 @@ Firestore (데이터베이스)
     - 방법 A: 프론트에 Firebase 클라이언트 SDK 직접 추가 → 보안·인증 분리 원칙 재검토 필요
     - 방법 B: 백엔드에서 SSE(Server-Sent Events) 구현 → Cloud Run은 가능하나 아키텍처 변경 필요
   - 다중 기기 동시 사용 또는 가족 공유 기능이 필요해지면 그때 도입 검토
+
+**완료 체크리스트**
+- [ ] E2E 테스트 코드 작성
+- [ ] E2E 테스트 전체 통과
+- [ ] 공부용 Documents 파일 작성
 
 ---
 
