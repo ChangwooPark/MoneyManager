@@ -79,7 +79,7 @@ export default function MainApp() {
             yearMonth를 props로 전달해 각 탭이 해당 월 데이터를 조회할 수 있게 함
             refreshKey: 저장 완료 시 변경되어 각 탭의 데이터를 재조회하게 함 */}
         {activeTab === 'home'     && <HomeTab     yearMonth={yearMonth} refreshKey={refreshKey} />}
-        {activeTab === 'calendar' && <CalendarTab yearMonth={yearMonth} />}
+        {activeTab === 'calendar' && <CalendarTab yearMonth={yearMonth} refreshKey={refreshKey} />}
         {activeTab === 'stats'    && <StatsTab    yearMonth={yearMonth} />}
         {activeTab === 'more'     && <MoreTab />}
       </main>
