@@ -178,16 +178,18 @@ Firestore (데이터베이스)
 - [x] E2E 테스트 전체 통과 ✅ (Chromium + Mobile Chrome 54/54)
 - [x] 공부용 Documents 파일 작성 (`Documents/16-phase10-home-tab.md`)
 
-### Phase 11: 달력 화면 (달력 탭)
-- [ ] 월간 그리드 달력 구현 (7열)
-  - 각 날짜에 총 수입/지출 금액 소형 텍스트 표시
-  - 모바일 폭에 맞춰 폰트 크기 유동적 조절
-- [ ] 날짜 클릭 시 하단 시트(Bottom Sheet) 또는 모달로 해당 날짜 상세 내역 표시
+### Phase 11: 달력 화면 (달력 탭) ✅ 완료
+- [x] 월간 그리드 달력 구현 (7열)
+  - 각 날짜에 총 수입/지출 금액 소형 텍스트 표시 (万/千 단위 단축)
+  - 모바일 폭에 맞춰 폰트 크기 유동적 조절 (text-[9px])
+- [x] 날짜 클릭 시 하단 시트(Bottom Sheet)로 해당 날짜 상세 내역 표시
+- [x] 오늘 날짜 하이라이트, 일요일/토요일 색상 구분
+- [x] refreshKey 연동 — 거래 저장 후 달력 자동 갱신
 
 **완료 체크리스트**
-- [ ] E2E 테스트 코드 작성
-- [ ] E2E 테스트 전체 통과
-- [ ] 공부용 Documents 파일 작성
+- [x] E2E 테스트 코드 작성 (`tests/calendar-tab.spec.ts` — 42개 테스트)
+- [x] E2E 테스트 전체 통과 ✅ (Chromium + Mobile Chrome 42/42)
+- [x] 공부용 Documents 파일 작성 (`Documents/17-phase11-calendar-tab.md`)
 
 ### Phase 12: 통계 화면 (통계 탭)
 - [ ] 상단 [수입] / [지출] 전환 탭 구현
