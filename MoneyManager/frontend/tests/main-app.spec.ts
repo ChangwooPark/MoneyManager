@@ -129,12 +129,13 @@ test.describe('메인 앱 화면', () => {
   });
 
   test('탭 전환 시 이전 탭의 콘텐츠는 사라진다', async ({ page }) => {
-    // 초기 홈 콘텐츠 확인
-    await expect(page.getByText(/Phase 10/)).toBeVisible();
+    // Phase 10 구현 완료 — HomeTab이 실제 예산 대시보드를 렌더링함
+    // 홈 탭: 예산 대시보드의 "예산" 레이블이 로딩 완료 후 표시됨
+    await expect(page.getByText('예산').first()).toBeVisible({ timeout: 8000 });
 
-    // 달력으로 전환 → 홈 콘텐츠 사라짐
+    // 달력으로 전환 → 홈 탭 예산 대시보드가 사라짐
     await page.getByRole('button', { name: /달력/ }).click();
-    await expect(page.getByText(/Phase 10/)).not.toBeVisible();
+    await expect(page.getByText('예산').first()).not.toBeVisible();
     await expect(page.getByText(/Phase 11/)).toBeVisible();
   });
 
