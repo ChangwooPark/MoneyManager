@@ -98,6 +98,21 @@ find ./frontend/src -name "CalendarTab*" -o -name "Calendar*" | grep -v node_mod
 | `-o` | OR 조건 (또는) |
 | `\| grep -v node_modules` | 결과에서 `node_modules`가 포함된 줄 제거 (`-v` = 제외) |
 
+**`-not -path` 로 특정 경로 제외하기**:
+
+```bash
+# 예시: 모든 PNG 파일을 찾되 node_modules 폴더는 제외
+find . -name "*.png" -not -path "*/node_modules/*" | sort
+```
+
+| 부분 | 의미 |
+|---|---|
+| `-not -path "패턴"` | 경로가 이 패턴에 해당하는 결과는 제외 |
+| `"*/node_modules/*"` | 경로 어딘가에 `node_modules` 폴더가 포함된 것 (`*` = 아무 경로나) |
+
+> `-o`(OR)와 `-not`(NOT)은 `find`의 **조건 연산자**입니다.  
+> `grep -v node_modules` 방식과 달리, `-not -path` 는 탐색 단계에서 폴더를 아예 제외하므로 더 효율적입니다.
+
 ---
 
 ### 1-2. 파일 내용에서 특정 단어 찾기: `grep`
@@ -294,7 +309,16 @@ npx playwright test tests/home-tab.spec.ts --reporter=list 2>&1
 | `npx playwright test` | Playwright 테스트 러너 실행 |
 | `tests/파일명.spec.ts` | 이 파일의 테스트만 실행 (생략하면 모든 테스트 실행) |
 | `--reporter=list` | 테스트 결과를 한 줄씩 목록 형태로 출력 |
+| `--reporter=line` | 테스트 결과를 한 줄 요약으로 출력 (실행 중 진행 상황 확인에 유리) |
 | `2>&1` | 오류 출력도 화면에 합쳐서 표시 |
+
+**`--reporter` 옵션 비교**:
+
+| 옵션 | 출력 형태 | 언제 쓰는가 |
+|---|---|---|
+| `--reporter=list` | 각 테스트를 한 줄씩 나열 | 어떤 테스트가 통과/실패했는지 개별 확인 |
+| `--reporter=line` | 진행 중 상태를 한 줄에 업데이트 | 테스트 수가 많아 실행 중 진행 상황을 실시간으로 보고 싶을 때 |
+| `--reporter=dot` | 점(`.`)으로만 표시 | 출력을 최소화하고 싶을 때 |
 
 **결과 기호**:
 
@@ -330,9 +354,38 @@ cat /tmp/.../tasks/<ID>.output | head -60
 
 ---
 
-## 5. Git 명령어 — 저장 및 배포
+## 5. 파일 삭제 — `rm`
+
+```bash
+rm 파일경로
+rm 파일1 파일2 파일3
+```
+
+**용도**: 파일을 삭제합니다. 한 번에 여러 파일을 나열해서 지울 수 있습니다.
+
+```bash
+# 예시: PNG 파일 여러 개를 한 번에 삭제
+rm calendar-tab.png stats-tab.png home-tab-phase10.png
+
+# 예시: 특정 폴더 안 모든 PNG 삭제 (와일드카드 사용)
+rm .playwright-mcp/page-*.png
+```
+
+| 부분 | 의미 |
+|---|---|
+| `rm <파일>` | 파일을 영구 삭제 (휴지통으로 가지 않음, 복구 불가) |
+| `rm 파일1 파일2` | 여러 파일을 한 번에 삭제 |
+| `rm -r <폴더>` | 폴더와 그 안의 내용을 모두 삭제 (`-r` = recursive, 재귀) |
+
+> ⚠️ **주의**: `rm` 은 휴지통을 거치지 않고 즉시 삭제합니다.  
+> 삭제 전에 `ls` 로 대상을 한 번 확인하는 습관이 중요합니다.
+
+---
+
+## 6. Git 명령어 — 저장 및 배포
 
 ### Git이란?
+
 
 코드의 **변경 이력을 기록**하는 버전 관리 시스템입니다.  
 언제, 누가, 어떤 내용을 바꿨는지 기록하고, 과거 상태로 되돌리거나 여러 명이 동시에 작업할 수 있게 합니다.
@@ -342,7 +395,7 @@ cat /tmp/.../tasks/<ID>.output | head -60
                 ◀── git pull ───
 ```
 
-### 5-1. 변경 파일 스테이징: `git add`
+### 6-1. 변경 파일 스테이징: `git add`
 
 ```bash
 git add 파일경로1 파일경로2
@@ -363,7 +416,7 @@ git add .
 
 ---
 
-### 5-2. 커밋 생성: `git commit`
+### 6-2. 커밋 생성: `git commit`
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -400,7 +453,7 @@ EOF
 
 ---
 
-### 5-3. 원격 저장소에 업로드: `git push`
+### 6-3. 원격 저장소에 업로드: `git push`
 
 ```bash
 git push origin main
@@ -419,11 +472,14 @@ git push origin main
 
 ---
 
-### 5-4. 현재 상태 확인: `git status` / `git log`
+### 6-4. 현재 상태 확인: `git status` / `git log`
 
 ```bash
 # 변경된 파일 목록 확인
 git status
+
+# 변경된 파일 목록 — 단축 형식
+git status --short
 
 # 최근 커밋 이력 확인
 git log --oneline -10
@@ -431,13 +487,49 @@ git log --oneline -10
 
 | 명령어 | 의미 |
 |---|---|
-| `git status` | 수정됨/스테이징됨/추적 안 됨 파일 목록 표시 |
+| `git status` | 수정됨/스테이징됨/추적 안 됨 파일 목록을 상세 설명과 함께 표시 |
+| `git status --short` | 파일 경로만 간결하게 표시 (`M`=수정됨, `??`=추적 안 됨, `A`=스테이징됨) |
 | `git log --oneline` | 커밋 이력을 한 줄씩 간략하게 표시 |
 | `-10` | 최근 10개만 표시 |
 
+**`git status --short` 출력 예시**:
+```
+ M src/components/MainApp.tsx     ← 수정됨 (스테이징 안 됨)
+?? Documents/19-phase12-stats-tab.md  ← 새 파일 (추적 안 됨)
+A  frontend/tests/stats-tab.spec.ts   ← 스테이징됨
+```
+
 ---
 
-## 6. 특수 기호 한눈에 보기
+### 6-5. Git 루트 경로 확인: `git rev-parse`
+
+```bash
+git rev-parse --show-toplevel
+```
+
+**용도**: 현재 Git 저장소의 최상위 폴더(루트) 경로를 확인합니다. 현재 어느 폴더에 있든 상관없이 Git 저장소 루트를 알 수 있습니다.
+
+```bash
+# 예시: frontend 폴더 안에 있어도 프로젝트 루트를 알 수 있음
+$ pwd
+/Users/cw-park/private-project/MoneyManager/frontend
+
+$ git rev-parse --show-toplevel
+/Users/cw-park/private-project
+```
+
+| 부분 | 의미 |
+|---|---|
+| `git rev-parse` | Git 내부 참조(커밋 해시, 경로 등)를 해석하는 다목적 명령어 |
+| `--show-toplevel` | Git 저장소의 루트 폴더 절대 경로 출력 |
+
+> **왜 필요한가?** `git add 파일경로` 는 항상 Git 루트 기준 상대 경로를 써야 합니다.  
+> 현재 위치가 `frontend/` 안이라면 `frontend/src/...` 처럼 경로를 맞춰야 합니다.  
+> `git rev-parse --show-toplevel` 로 루트를 확인하면 경로 실수를 방지할 수 있습니다.
+
+---
+
+## 7. 특수 기호 한눈에 보기
 
 | 기호 | 이름 | 의미 |
 |---|---|---|
@@ -458,12 +550,14 @@ git log --oneline -10
 
 ---
 
-## 7. 개발 작업 흐름에서 명령어가 쓰이는 순서
+## 8. 개발 작업 흐름에서 명령어가 쓰이는 순서
 
 ```
 코드 작성 전 — 기존 코드 파악
    find, grep -n, ls
    → 파일 위치 확인, 관련 코드 줄 번호 확인
+   git rev-parse --show-toplevel
+   → Git 루트 경로 확인 (git add 경로 기준점 파악)
 
 코드 작성 후 — 오류 확인
    npx tsc --noEmit
@@ -475,9 +569,14 @@ git log --oneline -10
    lsof -ti:포트 | xargs kill -9  → 포트 충돌 시 해결
 
 E2E 테스트 실행
-   npx playwright test tests/파일.spec.ts --reporter=list
+   npx playwright test tests/파일.spec.ts --reporter=line
 
 저장 및 배포
+   git status --short     → 변경 파일 목록 간단히 확인
    git add 파일 → git commit → git push origin main
    → GitHub Actions → Vercel 자동 배포
+
+불필요한 파일 정리
+   find . -name "*.png" -not -path "*/node_modules/*"  → 대상 확인
+   rm 파일1 파일2 ...     → 확인 후 삭제
 ```
