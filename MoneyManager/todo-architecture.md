@@ -218,6 +218,24 @@ Firestore (데이터베이스)
 - [x] E2E 테스트 전체 통과 ✅ (Chromium + Mobile Chrome 36/36)
 - [x] 공부용 Documents 파일 작성 (`Documents/20-phase13-more-tab.md`)
 
+### Phase 13.5: 즉시 적용된 UX 개선 ✅ 완료
+
+#### 더보기 탭
+- [x] **FAB 버튼 더보기 탭 숨김** — 더보기 탭에서는 거래 추가 FAB 불필요 → `activeTab !== 'more'` 조건 추가 (`MainApp.tsx`)
+
+#### 달력 탭
+- [x] **달력 화면 전체 채우기** — 연월 선택바와 하단 탭바 제외한 전체 공간을 달력으로 채움
+  - `main`에 `flex flex-col` 추가, CalendarTab 래퍼에 `flex-1` 적용
+  - 각 주(week) 행이 `flex-1`로 균등 높이 분배
+- [x] **날짜 사이 구분선 추가** — 주 사이 수평선 + 요일 사이 수직선 (`var(--border)` 색상, 1px)
+
+#### 스크롤 기능 검증 (E2E)
+- [x] **홈 탭 스크롤 테스트** — 25개 거래로 scrollHeight > clientHeight 검증, 상하 스크롤 가능 확인
+- [x] **통계 탭 스크롤 테스트** — 20개 카테고리로 스크롤 영역 생성 확인, 탭바 고정 위치 검증
+  - `tests/scroll.spec.ts` — 16개 테스트 (Chromium + Mobile Chrome 16/16 ✅)
+
+---
+
 ### Phase 14: 홈·달력 탭 UX 개선 (Phase 11~13 완료 후 진행)
 
 #### 홈 탭 개선

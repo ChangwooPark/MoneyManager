@@ -72,9 +72,12 @@ export default function MainApp() {
       )}
 
       {/* 탭 컨텐츠 영역
-          flex-1: 남은 세로 공간을 모두 차지 (위 선택기 + 아래 탭바를 제외한 영역)
-          overflow-y-auto: 내용이 길면 세로 스크롤 활성화 */}
-      <main className="flex-1 overflow-y-auto">
+          flex-1: 남은 세로 공간을 모두 차지
+          overflow-y-auto: 내용이 길면 세로 스크롤 활성화
+          flex flex-col: 자식 탭이 flex-1 로 높이를 채울 수 있도록 flex 컨텍스트 제공
+                         (CalendarTab은 flex-1 으로 전체 높이를 채우고,
+                          HomeTab·StatsTab은 자연 높이를 가져 overflow 시 스크롤됨) */}
+      <main className="flex-1 overflow-y-auto flex flex-col">
         {/* 조건부 렌더링: 활성 탭에 해당하는 컴포넌트만 표시
             yearMonth를 props로 전달해 각 탭이 해당 월 데이터를 조회할 수 있게 함
             refreshKey: 저장 완료 시 변경되어 각 탭의 데이터를 재조회하게 함 */}
@@ -86,18 +89,20 @@ export default function MainApp() {
 
       {/* ── FAB (Floating Action Button) ─────────────────────────────
           화면 우하단에 고정된 '+' 버튼입니다.
-          클릭 시 거래 입력 폼(TransactionForm)이 열립니다.
+          더보기 탭에서는 불필요하므로 숨깁니다.
           bottom-20: 탭바(64px) 위에 여유를 두고 배치
           z-40: 탭바(z-index 미설정)보다 위에, 폼 오버레이(z-50)보다 아래
       */}
-      <button
-        onClick={() => setShowForm(true)}
-        className="absolute bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl font-light shadow-lg active:scale-95 transition-transform z-40"
-        style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-        aria-label="거래 추가"
-      >
-        +
-      </button>
+      {activeTab !== 'more' && (
+        <button
+          onClick={() => setShowForm(true)}
+          className="absolute bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center text-2xl font-light shadow-lg active:scale-95 transition-transform z-40"
+          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+          aria-label="거래 추가"
+        >
+          +
+        </button>
+      )}
 
       {/* 하단 탭바 — flex-col 구조에서 항상 맨 아래에 위치
           BottomNav 내부에서 flexShrink:0 으로 높이 고정 */}
