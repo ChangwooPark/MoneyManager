@@ -61,7 +61,9 @@ export async function createTransaction(data: Omit<Transaction, 'id' | 'createdA
 }
 
 export async function getTransactions(yearMonth?: string): Promise<Transaction[]> {
-  let q = db.collection(COLLECTION).orderBy('date', 'desc').orderBy('createdAt', 'desc');
+  // date만 Firestore에서 정렬 — date + createdAt 복합 인덱스 없이도 동작
+  // createdAt 2차 정렬은 fetch 후 JS에서 처리
+  let q = db.collection(COLLECTION).orderBy('date', 'desc');
   if (yearMonth) {
     const [year, month] = yearMonth.split('-');
     q = q
@@ -69,7 +71,15 @@ export async function getTransactions(yearMonth?: string): Promise<Transaction[]
       .where('date', '<=', `${year}-${month}-31`) as typeof q;
   }
   const snapshot = await q.get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Transaction, 'id'>) }));
+  const rows = snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Transaction, 'id'>) }));
+
+  // 같은 날짜 내에서 최신 등록 순(createdAt DESC) 정렬
+  return rows.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    const aTs = (a.createdAt as { _seconds: number } | undefined)?._seconds ?? 0;
+    const bTs = (b.createdAt as { _seconds: number } | undefined)?._seconds ?? 0;
+    return bTs - aTs;
+  });
 }
 
 export async function getTransactionById(id: string): Promise<Transaction | null> {
