@@ -1,13 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createTransaction } from '@/lib/api';
 import { Transaction } from '@/types';
 
+// ─── 카테고리 목록 (수입/지출 구분) ────────────────────────────
+// 수입/지출 전환 시 카테고리가 초기화됨
+const CATEGORIES = {
+  expense: ['식비', '교통', '쇼핑', '의료', '통신', '여가', '공과금', '생활', '기타'],
+  income:  ['급여', '부업', '이자', '보너스', '기타'],
+} as const;
+
+// 이 픽셀 이상 아래로 드래그하면 모달이 닫힘
+const DISMISS_THRESHOLD = 100;
+
 // ─── Props 타입 정의 ───────────────────────────────────────────
 interface TransactionFormProps {
-  onClose: () => void;   // 폼을 닫을 때 호출 (취소 또는 저장 완료 후)
-  onSaved: () => void;   // 저장 성공 후 부모에게 알려 목록을 갱신하게 함
+  onClose: () => void;
+  onSaved: () => void;
 }
 
 // ─── 오늘 날짜를 YYYY-MM-DD 형식으로 반환하는 함수 ─────────────
@@ -29,22 +39,36 @@ function formatYen(value: number): string {
 // ─── TransactionForm 컴포넌트 ──────────────────────────────────
 // 수입/지출 내역을 입력하는 바텀 시트(Bottom Sheet) 형태의 폼입니다.
 // 화면 하단에서 슬라이드업 되는 방식으로 표시됩니다.
+// 핸들 바를 아래로 드래그하면 닫히고, 카테고리 칩으로 분류를 선택합니다.
 export default function TransactionForm({ onClose, onSaved }: TransactionFormProps) {
 
   // ── 폼 입력 상태 ──────────────────────────────────────────────
-  const [type, setType]           = useState<'income' | 'expense'>('expense'); // 기본값: 지출
-  const [date, setDate]           = useState(getTodayString());                // 기본값: 오늘
-  const [category, setCategory]   = useState('');                              // 카테고리(내용)
-  const [amount, setAmount]       = useState('');                              // 금액 (문자열로 관리 후 저장 시 숫자 변환)
-  const [memo, setMemo]           = useState('');                              // 메모 (선택 항목)
-  const [loading, setLoading]     = useState(false);                          // 저장 중 여부
-  const [error, setError]         = useState('');                              // 유효성 검사 오류 메시지
+  const [type, setType]         = useState<'income' | 'expense'>('expense'); // 기본값: 지출
+  const [date, setDate]         = useState(getTodayString());                // 기본값: 오늘
+  const [category, setCategory] = useState('');   // 선택된 카테고리 칩
+  const [amount, setAmount]     = useState('');   // 금액 (문자열로 관리 후 저장 시 숫자 변환)
+  const [memo, setMemo]         = useState('');   // 메모 (선택 항목)
+  const [loading, setLoading]   = useState(false);  // 저장 중 여부
+  const [error, setError]       = useState('');     // 유효성 검사 오류 메시지
+
+  // ── 드래그로 닫기 상태 ────────────────────────────────────────
+  // dragStartY: ref 사용 — 터치 이동마다 state 업데이트 비용 절감
+  const dragStartY = useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);   // 현재 드래그 거리(px)
+  const [isDragging, setIsDragging] = useState(false); // 드래그 중 여부 (transition 제어용)
+
+  // ── 수입/지출 전환 — 카테고리 초기화 ────────────────────────
+  // 지출 카테고리(식비·교통…)와 수입 카테고리(급여·부업…)는 별개이므로 전환 시 리셋
+  const handleTypeChange = (newType: 'income' | 'expense') => {
+    setType(newType);
+    setCategory('');
+  };
 
   // ── 저장 처리 함수 ────────────────────────────────────────────
   const handleSave = async () => {
     // 유효성 검사: 필수 항목 확인
-    if (!category.trim()) { setError('카테고리를 입력해 주세요'); return; }
-    if (!amount || Number(amount) <= 0) { setError('금액을 입력해 주세요'); return; }
+    if (!category)                         { setError('카테고리를 선택해 주세요'); return; }
+    if (!amount || Number(amount) <= 0)    { setError('금액을 입력해 주세요'); return; }
 
     setLoading(true);
     setError('');
@@ -54,15 +78,16 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
       const data: Omit<Transaction, 'id' | 'createdAt'> = {
         type,
         date,
-        category: category.trim(),
-        amount: Number(amount),           // 문자열 → 숫자 변환
-        description: category.trim(),     // 백엔드 스키마 호환용 (category와 동일하게)
-        memo: memo.trim() || undefined,   // 빈 문자열이면 undefined로 전송하지 않음
+        category,
+        amount: Number(amount),
+        // description: 메모가 있으면 메모 내용, 없으면 카테고리명 (백엔드 스키마 호환)
+        description: memo.trim() || category,
+        memo: memo.trim() || undefined,
       };
 
       await createTransaction(data);
-      onSaved();  // 부모에게 저장 완료 알림 → 목록 갱신
-      onClose();  // 폼 닫기
+      onSaved();
+      onClose();
     } catch {
       setError('저장에 실패했습니다. 다시 시도해 주세요.');
     } finally {
@@ -78,37 +103,75 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
     }
   };
 
+  // ── 드래그로 닫기 핸들러 (핸들 바에만 부착) ─────────────────
+  // 핸들 바를 아래로 드래그 → 오버레이가 페이드되며 시트가 내려감
+  // DISMISS_THRESHOLD 이상이면 닫힘, 미만이면 스냅백
+  const handleDragStart = (e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+    setIsDragging(true);
+  };
+
+  const handleDragMove = (e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    const delta = e.touches[0].clientY - dragStartY.current;
+    if (delta > 0) setDragOffset(delta); // 아래 방향만 허용
+  };
+
+  const handleDragEnd = () => {
+    if (dragOffset >= DISMISS_THRESHOLD) {
+      onClose();
+    } else {
+      setDragOffset(0); // 스냅백
+    }
+    dragStartY.current = null;
+    setIsDragging(false);
+  };
+
   // ── 현재 선택된 타입에 따른 강조색 ───────────────────────────
   const accentColor = type === 'income' ? 'var(--income)' : 'var(--expense)';
+  const categories  = CATEGORIES[type];
+  // 드래그 거리에 따라 오버레이를 점차 투명하게 (닫힐 것임을 시각적으로 표현)
+  const overlayOpacity = Math.max(0.05, 0.6 - dragOffset / 400);
 
   return (
     // ── 오버레이 (배경 어둡게) ────────────────────────────────
     // 폼 바깥 영역을 클릭하면 폼이 닫힘
     <div
       className="fixed inset-0 z-50 flex flex-col justify-end"
-      style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+      style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
       onClick={onClose}
     >
-      {/* ── 바텀 시트 본체 ────────────────────────────────────
-          stopPropagation: 폼 내부 클릭이 오버레이 클릭으로 전파되는 것을 막음
-          modal-sheet-max-height: max-height 90dvh (아이폰 크롬 브라우저 UI 대응, globals.css 정의)
-          overflow-y-auto: 내용이 길면 폼 내부에서 스크롤 (키보드 올라와도 레이아웃 유지)
+      {/* ── 바텀 시트 본체 ──────────────────────────────────────
+          transform translateY: 드래그 거리만큼 시트를 아래로 이동
+          transition: 드래그 중에는 즉각 반응, 스냅백/종료 시에는 부드럽게
+          modal-sheet-max-height: 90dvh - safe-area-inset-bottom (globals.css)
       */}
       <div
         className="rounded-t-2xl overflow-y-auto modal-sheet-max-height"
-        style={{ backgroundColor: 'var(--bg-secondary)' }}
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          transform: `translateY(${dragOffset}px)`,
+          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── 상단 핸들 바 (드래그 힌트용 UI) ──────────────── */}
-        <div className="flex justify-center pt-3 pb-1">
+        {/* ── 핸들 바 — 드래그로 닫기 터치 영역 ────────────────
+            pb-3으로 터치 타깃 확보, 커서로 드래그 가능임을 표시 */}
+        <div
+          className="flex justify-center pt-3 pb-3 cursor-grab active:cursor-grabbing"
+          onTouchStart={handleDragStart}
+          onTouchMove={handleDragMove}
+          onTouchEnd={handleDragEnd}
+        >
           <div className="w-10 h-1 rounded-full" style={{ backgroundColor: 'var(--border)' }} />
         </div>
 
-        {/* px-5: 좌우 패딩
+        {/* ── 폼 본문 ────────────────────────────────────────────
+            px-5: 좌우 패딩
             pt-2: 핸들 바 아래 상단 여백
-            pb: 기본 2rem(pb-8)에 iOS 홈 인디케이터 safe area 추가 —
-                브라우저 모드에서는 0이므로 영향 없음, PWA 모드에서는 ~34px 추가되어
-                저장 버튼이 홈 인디케이터 뒤로 숨는 문제 방지 */}
+            paddingBottom: 기본 2rem + iOS 홈 인디케이터 safe area —
+              브라우저 모드에서는 0이므로 영향 없음,
+              PWA 모드에서는 ~34px 추가되어 저장 버튼이 홈 인디케이터 뒤로 숨는 문제 방지 */}
         <div
           className="px-5 pt-2 flex flex-col gap-5"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
@@ -129,18 +192,17 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
           </div>
 
           {/* ── 수입 / 지출 토글 ──────────────────────────── */}
-          <div
-            className="flex rounded-xl p-1"
-            style={{ backgroundColor: 'var(--bg-card)' }}
-          >
+          <div className="flex rounded-xl p-1" style={{ backgroundColor: 'var(--bg-card)' }}>
             {(['expense', 'income'] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setType(t)}
+                onClick={() => handleTypeChange(t)}
                 className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{
                   // 선택된 타입은 배경색과 텍스트색 강조
-                  backgroundColor: type === t ? (t === 'income' ? 'var(--income)' : 'var(--expense)') : 'transparent',
+                  backgroundColor: type === t
+                    ? (t === 'income' ? 'var(--income)' : 'var(--expense)')
+                    : 'transparent',
                   color: type === t ? '#000' : 'var(--text-secondary)',
                 }}
               >
@@ -164,28 +226,34 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-primary)',
                 border: '1px solid var(--border)',
-                colorScheme: 'dark', // 날짜 피커를 다크 모드로 표시
+                colorScheme: 'dark',
               }}
             />
           </div>
 
-          {/* ── 카테고리(내용) 입력 ──────────────────────── */}
-          <div className="flex flex-col gap-1">
+          {/* ── 카테고리 칩 선택 ───────────────────────────
+              수입/지출 전환 시 목록이 바뀌고 선택이 초기화됨
+              선택된 칩은 accentColor로 강조 표시 */}
+          <div className="flex flex-col gap-2">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              내용
+              카테고리
             </label>
-            <input
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="예: 점심 식사, 교통비"
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none placeholder-gray-600"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border)',
-              }}
-            />
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95"
+                  style={{
+                    backgroundColor: category === cat ? accentColor : 'var(--bg-card)',
+                    color:           category === cat ? '#000'       : 'var(--text-secondary)',
+                    border: `1px solid ${category === cat ? accentColor : 'var(--border)'}`,
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── 금액 입력 ─────────────────────────────────── */}
@@ -203,7 +271,7 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
               </span>
               <input
                 type="text"
-                inputMode="numeric"   // 모바일에서 숫자 키패드 표시
+                inputMode="numeric"
                 value={amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 placeholder="0"
@@ -211,7 +279,7 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)',
-                  border: `1px solid var(--border)`,
+                  border: '1px solid var(--border)',
                 }}
               />
               {/* 금액 입력 시 오른쪽에 포맷된 값 미리보기 */}
@@ -226,16 +294,17 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
             </div>
           </div>
 
-          {/* ── 메모 입력 (선택 항목) ───────────────────────── */}
+          {/* ── 메모 입력 (선택) ─────────────────────────── */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              메모 <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(선택)</span>
+              메모{' '}
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(선택)</span>
             </label>
             <input
               type="text"
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
-              placeholder="추가 메모를 입력하세요"
+              placeholder="예: 친구와 점심, 롯데마트"
               className="w-full px-4 py-3 rounded-xl text-sm outline-none placeholder-gray-600"
               style={{
                 backgroundColor: 'var(--bg-card)',
@@ -257,10 +326,7 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
             onClick={handleSave}
             disabled={loading}
             className="w-full py-4 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
-            style={{
-              backgroundColor: accentColor,  // 수입이면 초록, 지출이면 빨강
-              color: '#000',
-            }}
+            style={{ backgroundColor: accentColor, color: '#000' }}
           >
             {loading ? '저장 중...' : '저장'}
           </button>
