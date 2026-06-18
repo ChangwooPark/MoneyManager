@@ -140,6 +140,11 @@ Firestore (데이터베이스)
 - [ ] 월별 목표 예산 설정 UI
   - 당월 목표 예산 금액 입력 및 수정
   - Firestore `budgets` 컬렉션에 저장
+- [ ] 카테고리 관리 UI
+  - 현재 거래 입력 폼의 카테고리 칩은 코드에 하드코딩된 상태
+  - 지출/수입 카테고리 목록을 Firestore `categories` 컬렉션으로 이전하여 DB 관리
+  - 더보기 탭에서 카테고리 추가·수정·삭제 가능한 편집 화면 구현
+  - 백엔드 API(`GET/POST/PUT/DELETE /categories`) 추가 필요
 
 ---
 
