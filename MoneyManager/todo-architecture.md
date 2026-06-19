@@ -359,7 +359,35 @@ Firestore (데이터베이스)
 - [ ] E2E 테스트 전체 통과
 - [ ] 공부용 Documents 파일 작성
 
-### Phase 16: 통계 탭 카테고리 상세 보기
+### Phase 16: iOS Safari Pull-to-Refresh 충돌 해결
+
+**발생 상황:**
+- iPhone Safari에서 거래 입력 모달(바텀시트)을 아래로 드래그할 때
+  iOS Safari의 네이티브 **Pull-to-Refresh** (당겨서 새로고침) 제스처가 먼저 발동됨
+- 모달을 닫으려는 드래그 중 모달이 아닌 **뒤 페이지 전체가 아래로 밀리며 새로고침** 동작
+- 결과: 모달 drag-to-close가 의도대로 작동하지 않음
+
+**원인:**
+- 아이폰 Safari는 페이지 최상단에서 아래로 스와이프하면 페이지를 새로고침함
+- `touchmove` + `preventDefault()`로 일반 스크롤은 막을 수 있지만,
+  iOS 네이티브 Pull-to-Refresh는 별도 레이어에서 처리되어 `preventDefault()`만으로 완전히 차단이 어려움
+
+**개선 목표:**
+- 모달이 열린 동안 Pull-to-Refresh 완전 비활성화
+- 모달 닫힌 후 Pull-to-Refresh 복원 (정상 동작 보장)
+
+**구현 후보:**
+- CSS `overscroll-behavior: none`을 `<body>` 또는 앱 루트에 조건부 적용
+  - 모달 열릴 때: `document.body.style.overscrollBehavior = 'none'`
+  - 모달 닫힐 때: `document.body.style.overscrollBehavior = ''`
+- `viewport` 메타태그 조정 또는 PWA manifest 설정 검토
+
+**완료 체크리스트**
+- [ ] E2E 테스트 코드 작성
+- [ ] E2E 테스트 전체 통과
+- [ ] 공부용 Documents 파일 작성
+
+### Phase 17: 통계 탭 카테고리 상세 보기
 - [ ] **카테고리 항목 클릭 시 상세 내역 표시**
   - 현재: 통계 탭에서 "식비", "쇼핑" 등 카테고리 행은 클릭해도 반응 없음
   - 개선: 카테고리 행을 탭하면 해당 카테고리에 속한 개별 거래 목록을 바텀시트 또는 드릴다운 뷰로 표시
