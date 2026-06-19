@@ -5,6 +5,7 @@ import {
   getTransactionById,
   updateTransaction,
   deleteTransaction,
+  deleteAllTransactions,
   Transaction,
 } from '../services/firestore';
 
@@ -46,6 +47,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     return;
   }
   res.json(updated);
+});
+
+// DELETE /all は /:id より前に配置 — Express が 'all' を :id として解釈しないため
+router.delete('/all', async (_req: Request, res: Response) => {
+  const count = await deleteAllTransactions();
+  res.json({ deleted: count });
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {

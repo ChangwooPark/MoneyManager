@@ -36,6 +36,10 @@ export function deleteTransaction(id: string): Promise<void> {
   return request<void>(`/transactions/${id}`, { method: 'DELETE' });
 }
 
+export function deleteAllTransactions(): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>('/transactions/all', { method: 'DELETE' });
+}
+
 // ─── Settings (PIN) ──────────────────────────────────────────
 
 export function verifyPin(pin: string): Promise<{ success: boolean }> {

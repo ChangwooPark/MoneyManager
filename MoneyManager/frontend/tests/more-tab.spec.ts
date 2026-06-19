@@ -81,6 +81,14 @@ async function setupApp(page: Page): Promise<void> {
     return route.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(MOCK_EXPENSE_CATEGORIES) });
   });
+  // 데이터 초기화 API 모킹 (DELETE /transactions/all → { deleted: 5 })
+  await page.route('**/transactions/all', route => {
+    if (route.request().method() === 'DELETE') {
+      return route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ deleted: 5 }) });
+    }
+    route.continue();
+  });
 
   await page.goto('/');
   // 메인 앱 렌더링 완료 대기
@@ -96,13 +104,14 @@ async function goToMoreTab(page: Page): Promise<void> {
 
 test.describe('더보기 탭 — 기본 렌더링', () => {
 
-  test('더보기 탭 클릭 시 3개 메뉴(PIN·예산·카테고리)가 표시된다', async ({ page }) => {
+  test('더보기 탭 메뉴 4개(PIN·예산·카테고리·초기화)가 표시된다', async ({ page }) => {
     await setupApp(page);
     await goToMoreTab(page);
 
     await expect(page.getByText('PIN 번호 변경')).toBeVisible();
     await expect(page.getByText(/예산 설정/)).toBeVisible();
     await expect(page.getByText('카테고리 관리')).toBeVisible();
+    await expect(page.getByText('데이터 초기화')).toBeVisible();
   });
 
   test('예산 메뉴에 현재 설정 금액이 표시된다', async ({ page }) => {
@@ -314,6 +323,124 @@ test.describe('더보기 탭 — 카테고리 관리', () => {
     await page.getByRole('button', { name: '추가', exact: true }).click();
 
     await expect(page.getByText('이미 존재하는 카테고리입니다')).toBeVisible();
+  });
+
+});
+
+test.describe('더보기 탭 — 아코디언 단일 열림', () => {
+
+  test('PIN 열린 상태에서 예산 클릭 → PIN 닫히고 예산 열린다', async ({ page }) => {
+    await setupApp(page);
+    await goToMoreTab(page);
+
+    // PIN 섹션 열기
+    await page.getByText('PIN 번호 변경').click();
+    await expect(page.getByRole('button', { name: '변경 저장' })).toBeVisible();
+
+    // 예산 섹션 클릭 → PIN 닫히고 예산 열려야 함
+    await page.getByText(/예산 설정/).click();
+
+    await expect(page.getByRole('button', { name: '변경 저장' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '저장' })).toBeVisible();
+  });
+
+  test('예산 열린 상태에서 데이터 초기화 클릭 → 예산 닫히고 초기화 섹션 열린다', async ({ page }) => {
+    await setupApp(page);
+    await goToMoreTab(page);
+
+    // 예산 섹션 열기
+    await page.getByText(/예산 설정/).click();
+    await expect(page.getByRole('button', { name: '저장' })).toBeVisible();
+
+    // 데이터 초기화 클릭 → 예산 닫히고 초기화 섹션 열림
+    await page.getByText('데이터 초기화').click();
+
+    await expect(page.getByRole('button', { name: '저장' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '확인' })).toBeVisible();
+  });
+
+  test('같은 섹션 재클릭 → 닫힌다', async ({ page }) => {
+    await setupApp(page);
+    await goToMoreTab(page);
+
+    await page.getByText('데이터 초기화').click();
+    await expect(page.getByRole('button', { name: '확인' })).toBeVisible();
+
+    await page.getByText('데이터 초기화').click();
+    await expect(page.getByRole('button', { name: '확인' })).not.toBeVisible();
+  });
+
+});
+
+test.describe('더보기 탭 — 데이터 초기화', () => {
+
+  test('초기화 헤더 클릭 시 PIN 입력 폼과 안내 문구가 표시된다', async ({ page }) => {
+    await setupApp(page);
+    await goToMoreTab(page);
+
+    await page.getByText('데이터 초기화').click();
+
+    await expect(page.getByText(/모든 거래 내역이 삭제됩니다/)).toBeVisible();
+    await expect(page.getByPlaceholder('••••')).toBeVisible();
+    await expect(page.getByRole('button', { name: '확인' })).toBeVisible();
+  });
+
+  test('잘못된 PIN 입력 시 오류 메시지가 표시된다', async ({ page }) => {
+    await setupApp(page);
+    // PIN 검증을 실패로 override (last registered route takes priority)
+    await page.route('**/settings/pin/verify', route =>
+      route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ success: false }) })
+    );
+    await goToMoreTab(page);
+
+    await page.getByText('데이터 초기화').click();
+    await page.getByPlaceholder('••••').fill('0000');
+    await page.getByRole('button', { name: '확인' }).click();
+
+    await expect(page.getByText('PIN이 올바르지 않습니다')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('올바른 PIN 입력 후 최종 확인 화면이 표시된다', async ({ page }) => {
+    await setupApp(page);
+    await goToMoreTab(page);
+
+    await page.getByText('데이터 초기화').click();
+    await page.getByPlaceholder('••••').fill('1234');
+    await page.getByRole('button', { name: '확인' }).click();
+
+    await expect(page.getByText('⚠️ 모든 거래 내역이 영구 삭제됩니다')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: '초기화', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '취소' })).toBeVisible();
+  });
+
+  test('취소 클릭 시 PIN 입력 단계로 돌아간다', async ({ page }) => {
+    await setupApp(page);
+    await goToMoreTab(page);
+
+    await page.getByText('데이터 초기화').click();
+    await page.getByPlaceholder('••••').fill('1234');
+    await page.getByRole('button', { name: '확인' }).click();
+    await expect(page.getByText('⚠️ 모든 거래 내역이 영구 삭제됩니다')).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('button', { name: '취소' }).click();
+
+    await expect(page.getByPlaceholder('••••')).toBeVisible();
+    await expect(page.getByText('⚠️ 모든 거래 내역이 영구 삭제됩니다')).not.toBeVisible();
+  });
+
+  test('초기화 확인 클릭 시 성공 메시지가 표시된다', async ({ page }) => {
+    await setupApp(page);
+    await goToMoreTab(page);
+
+    await page.getByText('데이터 초기화').click();
+    await page.getByPlaceholder('••••').fill('1234');
+    await page.getByRole('button', { name: '확인' }).click();
+    await expect(page.getByText('⚠️ 모든 거래 내역이 영구 삭제됩니다')).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('button', { name: '초기화', exact: true }).click();
+
+    await expect(page.getByText('초기화가 완료되었습니다 ✓')).toBeVisible({ timeout: 5000 });
   });
 
 });

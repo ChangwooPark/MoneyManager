@@ -85,7 +85,7 @@ export default function MainApp() {
         {activeTab === 'home'     && <HomeTab     yearMonth={yearMonth} refreshKey={refreshKey} />}
         {activeTab === 'calendar' && <CalendarTab yearMonth={yearMonth} refreshKey={refreshKey} />}
         {activeTab === 'stats'    && <StatsTab    yearMonth={yearMonth} refreshKey={refreshKey} />}
-        {activeTab === 'more'     && <MoreTab />}
+        {activeTab === 'more'     && <MoreTab onReset={handleSaved} />}
       </main>
 
       {/* ── FAB (Floating Action Button) ─────────────────────────────

@@ -162,3 +162,21 @@ export async function deleteTransaction(id: string): Promise<boolean> {
   await ref.delete();
   return true;
 }
+
+// Firestore batch는 최대 500 operations → 500개씩 나누어 일괄 삭제
+export async function deleteAllTransactions(): Promise<number> {
+  const snapshot = await db.collection(COLLECTION).get();
+  if (snapshot.empty) return 0;
+
+  const BATCH_SIZE = 500;
+  let deleted = 0;
+
+  for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
+    const batch = db.batch();
+    snapshot.docs.slice(i, i + BATCH_SIZE).forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    deleted += snapshot.docs.slice(i, i + BATCH_SIZE).length;
+  }
+
+  return deleted;
+}

@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { changePin, getBudget, setBudget, getCategories, addCategory, deleteCategory } from '@/lib/api';
+import { changePin, getBudget, setBudget, getCategories, addCategory, deleteCategory, verifyPin, deleteAllTransactions } from '@/lib/api';
 import { Category } from '@/types';
 
 // ─── 현재 연월 헬퍼 ──────────────────────────────────────────
-// 예산 설정은 이번 달 기준으로 동작합니다.
 function getCurrentYearMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -17,21 +16,33 @@ function getCurrentYearMonthLabel(): string {
 }
 
 // ─── 타입 정의 ───────────────────────────────────────────────
-type MoreView     = 'main' | 'categories';
-type CategoryTab  = 'expense' | 'income';
+type MoreView    = 'main' | 'categories';
+type CategoryTab = 'expense' | 'income';
+
+// 아코디언에서 한 번에 하나의 섹션만 열립니다.
+// null = 모두 닫힘
+type OpenSection = 'pin' | 'budget' | 'reset' | null;
+
+// 데이터 초기화 플로우: PIN 입력 → 최종 확인 버튼
+type ResetStep = 'pin' | 'confirm';
+
+// ─── Props ───────────────────────────────────────────────────
+interface MoreTabProps {
+  // 초기화 완료 시 홈/달력/통계 탭 갱신을 트리거하기 위한 콜백
+  onReset?: () => void;
+}
 
 // ─── MoreTab 컴포넌트 ─────────────────────────────────────────
-// 더보기 탭 화면입니다.
-// - 메인 뷰: PIN 번호 변경 / 예산 설정 / 카테고리 관리 메뉴
-// - 카테고리 관리 뷰: 지출·수입 카테고리 추가·삭제
-export default function MoreTab() {
-  // 현재 화면: 메인 메뉴 또는 카테고리 관리
+export default function MoreTab({ onReset }: MoreTabProps) {
   const [view, setView] = useState<MoreView>('main');
 
-  // ── 아코디언 열림 상태 ───────────────────────────────────────
-  // 각 섹션(PIN·예산)은 헤더 클릭 시 폼이 펼쳐집니다.
-  const [pinOpen,    setPinOpen]    = useState(false);
-  const [budgetOpen, setBudgetOpen] = useState(false);
+  // ── 아코디언 단일 열림 ────────────────────────────────────────
+  // 하나의 string | null 값으로 관리 → 다른 섹션 열면 이전 섹션 자동 닫힘
+  const [openSection, setOpenSection] = useState<OpenSection>(null);
+
+  const toggleSection = (section: OpenSection) => {
+    setOpenSection(prev => prev === section ? null : section);
+  };
 
   // ─────────────────────────────────────────────────────────────
   // PIN 번호 변경 상태
@@ -54,23 +65,48 @@ export default function MoreTab() {
   const [budgetSuccess, setBudgetSuccess] = useState(false);
 
   // ─────────────────────────────────────────────────────────────
+  // 데이터 초기화 상태
+  // ─────────────────────────────────────────────────────────────
+  const [resetPin,     setResetPin]     = useState('');
+  const [resetStep,    setResetStep]    = useState<ResetStep>('pin');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError,   setResetError]   = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  // ─────────────────────────────────────────────────────────────
   // 카테고리 관리 상태
   // ─────────────────────────────────────────────────────────────
-  const [catTab,       setCatTab]       = useState<CategoryTab>('expense');
-  const [categories,   setCategories]   = useState<Category[]>([]);
-  const [catLoading,   setCatLoading]   = useState(false);
-  const [newCatName,   setNewCatName]   = useState('');
-  const [catAddLoad,   setCatAddLoad]   = useState(false);
-  const [catError,     setCatError]     = useState('');
+  const [catTab,     setCatTab]     = useState<CategoryTab>('expense');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [catAddLoad, setCatAddLoad] = useState(false);
+  const [catError,   setCatError]   = useState('');
 
-  // ── 현재 월 예산 조회 (마운트 시) ─────────────────────────────
+  // ── 섹션 전환 시 폼 상태 초기화 ──────────────────────────────
+  // 다른 섹션을 열 때 이전 섹션의 입력값·오류·성공 상태를 리셋합니다.
+  useEffect(() => {
+    if (openSection !== 'pin') {
+      setCurrentPin(''); setNewPin(''); setConfirmPin('');
+      setPinError(''); setPinSuccess(false);
+    }
+    if (openSection !== 'budget') {
+      setBudgetInput(''); setBudgetError(''); setBudgetSuccess(false);
+    }
+    if (openSection !== 'reset') {
+      setResetPin(''); setResetStep('pin');
+      setResetError(''); setResetSuccess(false);
+    }
+  }, [openSection]);
+
+  // ── 현재 월 예산 조회 ─────────────────────────────────────────
   useEffect(() => {
     getBudget(yearMonth)
       .then(b => setCurrentBudget(b.amount))
-      .catch(() => setCurrentBudget(null)); // 예산 미설정 시 null
+      .catch(() => setCurrentBudget(null));
   }, [yearMonth]);
 
-  // ── 카테고리 목록 조회 (카테고리 뷰 진입 또는 탭 전환 시) ────
+  // ── 카테고리 목록 조회 ────────────────────────────────────────
   useEffect(() => {
     if (view !== 'categories') return;
     let cancelled = false;
@@ -99,8 +135,7 @@ export default function MoreTab() {
       if (res.success) {
         setPinSuccess(true);
         setCurrentPin(''); setNewPin(''); setConfirmPin('');
-        // 1.5초 후 성공 메시지 숨기고 닫기
-        setTimeout(() => { setPinSuccess(false); setPinOpen(false); }, 1500);
+        setTimeout(() => { setPinSuccess(false); setOpenSection(null); }, 1500);
       } else {
         setPinError('현재 PIN이 올바르지 않습니다');
       }
@@ -128,7 +163,7 @@ export default function MoreTab() {
       const b = await setBudget(yearMonth, amount);
       setCurrentBudget(b.amount);
       setBudgetSuccess(true);
-      setTimeout(() => { setBudgetSuccess(false); setBudgetOpen(false); setBudgetInput(''); }, 1500);
+      setTimeout(() => { setBudgetSuccess(false); setOpenSection(null); setBudgetInput(''); }, 1500);
     } catch {
       setBudgetError('저장에 실패했습니다. 다시 시도해 주세요.');
     } finally {
@@ -137,12 +172,55 @@ export default function MoreTab() {
   };
 
   // ─────────────────────────────────────────────────────────────
-  // 카테고리 추가
+  // 데이터 초기화 — Step 1: PIN 검증
+  // ─────────────────────────────────────────────────────────────
+  const handleResetVerifyPin = async () => {
+    setResetError('');
+    if (!/^\d{4}$/.test(resetPin)) { setResetError('PIN 4자리를 입력해 주세요'); return; }
+
+    setResetLoading(true);
+    try {
+      const res = await verifyPin(resetPin);
+      if (res.success) {
+        setResetStep('confirm'); // PIN 검증 성공 → 최종 확인 단계로
+      } else {
+        setResetError('PIN이 올바르지 않습니다');
+      }
+    } catch {
+      setResetError('확인에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // 데이터 초기화 — Step 2: 전체 삭제 실행
+  // ─────────────────────────────────────────────────────────────
+  const handleResetConfirm = async () => {
+    setResetLoading(true);
+    setResetError('');
+    try {
+      await deleteAllTransactions();
+      setResetSuccess(true);
+      onReset?.(); // 홈·달력·통계 탭 데이터 갱신
+      setTimeout(() => {
+        setResetSuccess(false);
+        setOpenSection(null);
+      }, 2000);
+    } catch {
+      setResetError('초기화에 실패했습니다. 다시 시도해 주세요.');
+      setResetStep('pin'); // 오류 시 PIN 입력 단계로 복귀
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // 카테고리 추가 / 삭제
   // ─────────────────────────────────────────────────────────────
   const handleCatAdd = async () => {
     const name = newCatName.trim();
     if (!name) { setCatError('카테고리 이름을 입력해 주세요'); return; }
-    // 중복 이름 검사
     if (categories.some(c => c.name === name)) { setCatError('이미 존재하는 카테고리입니다'); return; }
 
     setCatAddLoad(true);
@@ -158,9 +236,6 @@ export default function MoreTab() {
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // 카테고리 삭제
-  // ─────────────────────────────────────────────────────────────
   const handleCatDelete = async (id: string) => {
     try {
       await deleteCategory(id);
@@ -177,7 +252,6 @@ export default function MoreTab() {
     return (
       <div className="flex flex-col min-h-full">
 
-        {/* 헤더 */}
         <div
           className="flex items-center gap-2 px-4 py-4 border-b"
           style={{ borderColor: 'var(--border)' }}
@@ -194,7 +268,6 @@ export default function MoreTab() {
           </h2>
         </div>
 
-        {/* 지출/수입 탭 */}
         <div className="flex border-b" style={{ borderColor: 'var(--border)' }}>
           {(['expense', 'income'] as CategoryTab[]).map(tab => (
             <button
@@ -216,17 +289,12 @@ export default function MoreTab() {
         </div>
 
         <div className="px-4 pt-4 pb-8 flex flex-col gap-4">
-
-          {/* 카테고리 목록 */}
           {catLoading ? (
             <p className="text-sm text-center py-8" style={{ color: 'var(--text-secondary)' }}>
               불러오는 중...
             </p>
           ) : (
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{ backgroundColor: 'var(--bg-card)' }}
-            >
+            <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
               {categories.length === 0 ? (
                 <p className="text-sm text-center py-6" style={{ color: 'var(--text-secondary)' }}>
                   카테고리가 없습니다
@@ -235,22 +303,14 @@ export default function MoreTab() {
                 categories.map((cat, i) => (
                   <div key={cat.id}>
                     {i > 0 && (
-                      <div
-                        className="mx-4"
-                        style={{ height: '1px', backgroundColor: 'var(--border)' }}
-                      />
+                      <div className="mx-4" style={{ height: '1px', backgroundColor: 'var(--border)' }} />
                     )}
                     <div className="flex items-center justify-between px-4 py-3">
-                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {cat.name}
-                      </span>
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{cat.name}</span>
                       <button
                         onClick={() => handleCatDelete(cat.id)}
                         className="text-xs px-3 py-1 rounded-lg border"
-                        style={{
-                          color: 'var(--expense)',
-                          borderColor: 'var(--expense)',
-                        }}
+                        style={{ color: 'var(--expense)', borderColor: 'var(--expense)' }}
                       >
                         삭제
                       </button>
@@ -261,7 +321,6 @@ export default function MoreTab() {
             </div>
           )}
 
-          {/* 새 카테고리 추가 입력 */}
           <div className="flex gap-2">
             <input
               type="text"
@@ -287,9 +346,7 @@ export default function MoreTab() {
           </div>
 
           {catError && (
-            <p className="text-sm text-center" style={{ color: 'var(--expense)' }}>
-              {catError}
-            </p>
+            <p className="text-sm text-center" style={{ color: 'var(--expense)' }}>{catError}</p>
           )}
         </div>
       </div>
@@ -302,18 +359,11 @@ export default function MoreTab() {
   return (
     <div className="flex flex-col min-h-full px-4 pt-6 pb-8 gap-3">
 
-      {/* ── 1. PIN 번호 변경 섹션 ────────────────────────────── */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-card)' }}
-      >
-        {/* 헤더 행 — 클릭 시 아코디언 토글 */}
+      {/* ── 1. PIN 번호 변경 ─────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
         <button
           className="w-full flex items-center justify-between px-4 py-4"
-          onClick={() => {
-            setPinOpen(o => !o);
-            setPinError(''); setPinSuccess(false);
-          }}
+          onClick={() => toggleSection('pin')}
         >
           <div className="flex items-center gap-3">
             <span>🔐</span>
@@ -322,27 +372,20 @@ export default function MoreTab() {
             </span>
           </div>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            {pinOpen ? '∧' : '∨'}
+            {openSection === 'pin' ? '∧' : '∨'}
           </span>
         </button>
 
-        {/* 확장 영역 */}
-        {pinOpen && (
-          <div
-            className="px-4 pb-4 flex flex-col gap-3 border-t"
-            style={{ borderColor: 'var(--border)' }}
-          >
+        {openSection === 'pin' && (
+          <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
             <div className="pt-3 flex flex-col gap-2">
-              {/* 현재 PIN / 새 PIN / 확인 PIN 입력 필드 */}
               {([
-                { label: '현재 PIN',   value: currentPin, set: setCurrentPin },
-                { label: '새 PIN',     value: newPin,     set: setNewPin },
+                { label: '현재 PIN',    value: currentPin, set: setCurrentPin },
+                { label: '새 PIN',      value: newPin,     set: setNewPin },
                 { label: '새 PIN 확인', value: confirmPin, set: setConfirmPin },
               ] as const).map(({ label, value, set }) => (
                 <div key={label} className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {label}
-                  </label>
+                  <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</label>
                   <input
                     type="password"
                     inputMode="numeric"
@@ -376,17 +419,11 @@ export default function MoreTab() {
         )}
       </div>
 
-      {/* ── 2. 예산 설정 섹션 ─────────────────────────────────── */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-card)' }}
-      >
+      {/* ── 2. 예산 설정 ─────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
         <button
           className="w-full flex items-center justify-between px-4 py-4"
-          onClick={() => {
-            setBudgetOpen(o => !o);
-            setBudgetError(''); setBudgetSuccess(false);
-          }}
+          onClick={() => toggleSection('budget')}
         >
           <div className="flex items-center gap-3">
             <span>💰</span>
@@ -394,7 +431,6 @@ export default function MoreTab() {
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                 예산 설정 ({getCurrentYearMonthLabel()})
               </span>
-              {/* 현재 설정된 예산 금액을 서브텍스트로 표시 */}
               {currentBudget !== null && (
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   현재: ¥{currentBudget.toLocaleString('ja-JP')}
@@ -403,19 +439,14 @@ export default function MoreTab() {
             </div>
           </div>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            {budgetOpen ? '∧' : '∨'}
+            {openSection === 'budget' ? '∧' : '∨'}
           </span>
         </button>
 
-        {budgetOpen && (
-          <div
-            className="px-4 pb-4 flex flex-col gap-3 border-t"
-            style={{ borderColor: 'var(--border)' }}
-          >
+        {openSection === 'budget' && (
+          <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
             <div className="pt-3 flex flex-col gap-1">
-              <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                목표 금액 (¥)
-              </label>
+              <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>목표 금액 (¥)</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -446,7 +477,7 @@ export default function MoreTab() {
         )}
       </div>
 
-      {/* ── 3. 카테고리 관리 (카테고리 뷰로 이동) ─────────────── */}
+      {/* ── 3. 카테고리 관리 (별도 화면으로 이동) ───────────── */}
       <button
         className="w-full flex items-center justify-between px-4 py-4 rounded-2xl"
         style={{ backgroundColor: 'var(--bg-card)' }}
@@ -460,6 +491,111 @@ export default function MoreTab() {
         </div>
         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>›</span>
       </button>
+
+      {/* ── 4. 데이터 초기화 ─────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <button
+          className="w-full flex items-center justify-between px-4 py-4"
+          onClick={() => toggleSection('reset')}
+        >
+          <div className="flex items-center gap-3">
+            <span>🗑️</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--expense)' }}>
+              데이터 초기화
+            </span>
+          </div>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {openSection === 'reset' ? '∧' : '∨'}
+          </span>
+        </button>
+
+        {openSection === 'reset' && (
+          <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
+
+            {resetSuccess ? (
+              /* 초기화 완료 메시지 */
+              <p className="text-sm text-center py-4" style={{ color: 'var(--income)' }}>
+                초기화가 완료되었습니다 ✓
+              </p>
+
+            ) : resetStep === 'pin' ? (
+              /* Step 1: PIN 입력 */
+              <>
+                <p className="text-xs pt-3" style={{ color: 'var(--text-secondary)' }}>
+                  모든 거래 내역이 삭제됩니다. 계속하려면 PIN을 입력해 주세요.
+                </p>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>PIN</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={resetPin}
+                    onChange={e => { setResetPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setResetError(''); }}
+                    placeholder="••••"
+                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                    style={{
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border)',
+                    }}
+                  />
+                </div>
+
+                {resetError && (
+                  <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>{resetError}</p>
+                )}
+
+                <button
+                  onClick={handleResetVerifyPin}
+                  disabled={resetLoading}
+                  className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
+                >
+                  {resetLoading ? '확인 중...' : '확인'}
+                </button>
+              </>
+
+            ) : (
+              /* Step 2: 최종 확인 */
+              <>
+                <p className="text-sm pt-3 text-center font-semibold" style={{ color: 'var(--expense)' }}>
+                  ⚠️ 모든 거래 내역이 영구 삭제됩니다
+                </p>
+                <p className="text-xs text-center" style={{ color: 'var(--text-secondary)' }}>
+                  이 작업은 되돌릴 수 없습니다.
+                </p>
+
+                {resetError && (
+                  <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>{resetError}</p>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setResetStep('pin'); setResetPin(''); setResetError(''); }}
+                    className="flex-1 py-3 rounded-xl text-sm font-bold border"
+                    style={{
+                      color: 'var(--text-secondary)',
+                      borderColor: 'var(--border)',
+                      backgroundColor: 'transparent',
+                    }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleResetConfirm}
+                    disabled={resetLoading}
+                    className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
+                  >
+                    {resetLoading ? '삭제 중...' : '초기화'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
     </div>
   );
