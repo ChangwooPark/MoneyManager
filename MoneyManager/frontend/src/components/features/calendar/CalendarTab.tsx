@@ -117,6 +117,9 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
   const [dragOffset,  setDragOffset]  = useState(0);
   const [isDragging,  setIsDragging]  = useState(false);
 
+  // 시트 내부 터치를 구분하기 위한 ref (배경 스크롤 차단 시 시트 내부는 허용)
+  const sheetRef = useRef<HTMLDivElement>(null);
+
   const today = getTodayStr();
 
   // ── 날짜가 바뀔 때마다 드래그 상태 초기화 ─────────────────
@@ -124,6 +127,21 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
     setDragOffset(0);
     setIsDragging(false);
     dragStartY.current = null;
+  }, [selectedDate]);
+
+  // ── 시트 열린 동안 배경 스크롤 + Pull-to-Refresh 차단 (iOS Safari 대응) ──
+  useEffect(() => {
+    if (!selectedDate) return;
+    document.body.style.overscrollBehavior = 'none';
+    const prevent = (e: TouchEvent) => {
+      if (sheetRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    document.addEventListener('touchmove', prevent, { passive: false });
+    return () => {
+      document.body.style.overscrollBehavior = '';
+      document.removeEventListener('touchmove', prevent);
+    };
   }, [selectedDate]);
 
   // ── 바텀시트 닫기 (드래그/버튼/오버레이 공통) ─────────────
@@ -361,6 +379,7 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
 
           {/* 바텀시트 본체 — 드래그 거리만큼 translateY로 내려감 */}
           <div
+            ref={sheetRef}
             className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl flex flex-col overflow-hidden"
             style={{
               backgroundColor: 'var(--bg-secondary)',

@@ -356,7 +356,7 @@ Firestore (데이터베이스)
 **완료 체크리스트**
 - E2E: 386/386 passing
 
-#### 15-2. iOS Safari Pull-to-Refresh 충돌 해결
+#### 15-2. iOS Safari Pull-to-Refresh 충돌 해결 ✅ 완료
 
 **발생 상황:**
 - iPhone Safari에서 거래 입력 모달(바텀시트)을 아래로 드래그할 때
@@ -369,19 +369,13 @@ Firestore (데이터베이스)
 - `touchmove` + `preventDefault()`로 일반 스크롤은 막을 수 있지만,
   iOS 네이티브 Pull-to-Refresh는 별도 레이어에서 처리되어 `preventDefault()`만으로 완전히 차단이 어려움
 
-**개선 목표:**
-- 모달이 열린 동안 Pull-to-Refresh 완전 비활성화
-- 모달 닫힌 후 Pull-to-Refresh 복원 (정상 동작 보장)
-
-**구현 후보:**
-- CSS `overscroll-behavior: none`을 `<body>` 또는 앱 루트에 조건부 적용
-  - 모달 열릴 때: `document.body.style.overscrollBehavior = 'none'`
-  - 모달 닫힐 때: `document.body.style.overscrollBehavior = ''`
-- `viewport` 메타태그 조정 또는 PWA manifest 설정 검토
+**해결:**
+- `document.body.style.overscrollBehavior = 'none'` — 모달 마운트 시 설정, 언마운트 시 `''` 복원
+- 적용 대상: `TransactionForm`, `HomeTab` 거래 상세 시트, `CalendarTab` 날짜 상세 시트
+- `CalendarTab`에 누락됐던 `sheetRef` + `touchmove` 배경 스크롤 방어도 함께 추가
 
 **완료 체크리스트**
-- [ ] E2E 테스트 코드 작성
-- [ ] E2E 테스트 전체 통과
+- E2E: 400/400 passing (`tests/ios-overscroll.spec.ts` 14개 신규)
 - [ ] 공부용 Documents 파일 작성
 
 ### Phase 16: 통계 탭 카테고리 상세 보기

@@ -77,15 +77,19 @@ export default function HomeTab({ yearMonth, refreshKey, onRefresh, onEdit }: Ho
   // 상세 시트 본체 ref — iOS 배경 스크롤 차단 시 시트 내부 터치는 허용
   const detailSheetRef = useRef<HTMLDivElement>(null);
 
-  // ── 상세 시트 열린 동안 배경 스크롤 차단 (iOS Safari 대응) ────
+  // ── 상세 시트 열린 동안 배경 스크롤 + Pull-to-Refresh 차단 (iOS Safari 대응) ──
   useEffect(() => {
     if (!selectedTx) return;
+    document.body.style.overscrollBehavior = 'none';
     const prevent = (e: TouchEvent) => {
       if (detailSheetRef.current?.contains(e.target as Node)) return;
       e.preventDefault();
     };
     document.addEventListener('touchmove', prevent, { passive: false });
-    return () => document.removeEventListener('touchmove', prevent);
+    return () => {
+      document.body.style.overscrollBehavior = '';
+      document.removeEventListener('touchmove', prevent);
+    };
   }, [selectedTx]);
 
   // ── 데이터 조회 ───────────────────────────────────────────────
