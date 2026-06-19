@@ -300,7 +300,7 @@ export default function HomeTab({ yearMonth, refreshKey, onRefresh, onEdit }: Ho
                           {/* 왼쪽: 카테고리 칩 + 메모 */}
                           <div className="flex items-center gap-2 min-w-0">
                             <span
-                              className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
+                              className="shrink-0 inline-flex items-center justify-center min-w-[3.5rem] px-2 py-0.5 rounded-full text-xs font-medium"
                               style={{
                                 backgroundColor: tx.type === 'income'
                                   ? 'rgba(52, 211, 153, 0.15)'

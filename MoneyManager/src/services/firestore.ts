@@ -104,6 +104,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: string; // ISO 8601 date string
+  memo?: string;
   createdAt?: Timestamp;
 }
 

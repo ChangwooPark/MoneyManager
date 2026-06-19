@@ -27,7 +27,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 router.post('/', async (req: Request, res: Response) => {
-  const { type, amount, category, description, date } = req.body as Transaction;
+  const { type, amount, category, description, date, memo } = req.body as Transaction;
   if (!type || !amount || !category || !description || !date) {
     res.status(400).json({ error: 'Missing required fields: type, amount, category, description, date' });
     return;
@@ -36,7 +36,7 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'type must be "income" or "expense"' });
     return;
   }
-  const created = await createTransaction({ type, amount, category, description, date });
+  const created = await createTransaction({ type, amount, category, description, date, memo });
   res.status(201).json(created);
 });
 

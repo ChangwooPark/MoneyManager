@@ -338,32 +338,25 @@ Firestore (데이터베이스)
 - [ ] E2E 테스트 전체 통과
 - [ ] 공부용 Documents 파일 작성 (`Documents/24-phase14-3-home-tab.md`)
 
-### Phase 15: 알림 기능 (LINE / 카카오톡 연동)
-- [ ] **더보기 탭 — 알림 어카운트 등록 메뉴 추가**
-  - LINE 또는 카카오톡 어카운트를 최대 5개까지 등록 가능
-  - 등록 정보: 플랫폼(LINE/카카오톡), 어카운트 식별자(토큰 또는 ID)
-  - Firestore `notification_accounts` 컬렉션에 저장
-  - 백엔드 API(`GET/POST/DELETE /notification-accounts`) 추가 필요
-- [ ] **거래 저장 시 알림 발송**
-  - `POST /transactions` 처리 완료 후 등록된 어카운트로 알림 메시지 전송
-  - LINE: LINE Notify 또는 LINE Messaging API 사용
-  - 카카오톡: 카카오 알림톡 또는 카카오 오픈채팅 Bot API 사용
-  - 알림 메시지 내용 예시:
-    ```
-    [가계부 알림]
-    💰 수입 +¥250,000 (급여)
-    2026-06-18 등록
-    ```
-- [ ] **알림 발송 실패 처리**
-  - 알림 발송 실패 시 거래 저장 자체는 정상 완료 (알림은 부가 기능)
-  - 실패 로그는 백엔드에서 기록
+### Phase 15: 버그 수정 + iOS Safari Pull-to-Refresh 충돌 해결
+
+#### 15-1. 버그 수정 ✅ 완료
+
+- [x] **거래 추가 시 메모가 저장되지 않는 버그**
+  - 원인: `POST /transactions` 라우트에서 `memo` 필드를 destructure하지 않아 `createTransaction` 호출 시 누락
+  - 수정: `src/routes/transactions.ts` — `memo` destructure 추가, `createTransaction({ ..., memo })` 전달
+  - 수정: `src/services/firestore.ts` — `Transaction` 인터페이스에 `memo?: string` 추가
+  - 참고: `PUT /transactions/:id` (수정)는 `req.body` 전체를 전달해 영향 없었음
+
+- [x] **홈 탭 카테고리 칩 너비 불일치 — 메모 시작 위치가 제각각**
+  - 원인: 카테고리 칩이 텍스트 길이에 따라 자동 너비 → "식비"(2자), "공과금"(3자) 간 너비 차이
+  - 수정: `frontend/src/components/features/home/HomeTab.tsx` — 칩에 `min-w-[3.5rem] inline-flex justify-center` 적용
+  - 결과: 모든 카테고리 칩이 최소 56px로 통일, 메모 텍스트 시작 위치 일정
 
 **완료 체크리스트**
-- [ ] E2E 테스트 코드 작성
-- [ ] E2E 테스트 전체 통과
-- [ ] 공부용 Documents 파일 작성
+- E2E: 386/386 passing
 
-### Phase 16: iOS Safari Pull-to-Refresh 충돌 해결
+#### 15-2. iOS Safari Pull-to-Refresh 충돌 해결
 
 **발생 상황:**
 - iPhone Safari에서 거래 입력 모달(바텀시트)을 아래로 드래그할 때
@@ -391,7 +384,7 @@ Firestore (데이터베이스)
 - [ ] E2E 테스트 전체 통과
 - [ ] 공부용 Documents 파일 작성
 
-### Phase 17: 통계 탭 카테고리 상세 보기
+### Phase 16: 통계 탭 카테고리 상세 보기
 - [ ] **카테고리 항목 클릭 시 상세 내역 표시**
   - 현재: 통계 탭에서 "식비", "쇼핑" 등 카테고리 행은 클릭해도 반응 없음
   - 개선: 카테고리 행을 탭하면 해당 카테고리에 속한 개별 거래 목록을 바텀시트 또는 드릴다운 뷰로 표시
@@ -403,6 +396,31 @@ Firestore (데이터베이스)
     - 방법 A: CalendarTab의 날짜 상세 바텀시트와 동일한 구조 재사용
     - 방법 B: 별도 드릴다운 페이지로 이동 (URL: `/stats?category=식비&month=2026-06`)
   - 바텀시트 방식(A)이 모바일 UX에 자연스러우므로 우선 검토
+
+**완료 체크리스트**
+- [ ] E2E 테스트 코드 작성
+- [ ] E2E 테스트 전체 통과
+- [ ] 공부용 Documents 파일 작성
+
+### Phase 17: 알림 기능 (LINE / 카카오톡 연동)
+- [ ] **더보기 탭 — 알림 어카운트 등록 메뉴 추가**
+  - LINE 또는 카카오톡 어카운트를 최대 5개까지 등록 가능
+  - 등록 정보: 플랫폼(LINE/카카오톡), 어카운트 식별자(토큰 또는 ID)
+  - Firestore `notification_accounts` 컬렉션에 저장
+  - 백엔드 API(`GET/POST/DELETE /notification-accounts`) 추가 필요
+- [ ] **거래 저장 시 알림 발송**
+  - `POST /transactions` 처리 완료 후 등록된 어카운트로 알림 메시지 전송
+  - LINE: LINE Notify 또는 LINE Messaging API 사용
+  - 카카오톡: 카카오 알림톡 또는 카카오 오픈채팅 Bot API 사용
+  - 알림 메시지 내용 예시:
+    ```
+    [가계부 알림]
+    💰 수입 +¥250,000 (급여)
+    2026-06-18 등록
+    ```
+- [ ] **알림 발송 실패 처리**
+  - 알림 발송 실패 시 거래 저장 자체는 정상 완료 (알림은 부가 기능)
+  - 실패 로그는 백엔드에서 기록
 
 **완료 체크리스트**
 - [ ] E2E 테스트 코드 작성
