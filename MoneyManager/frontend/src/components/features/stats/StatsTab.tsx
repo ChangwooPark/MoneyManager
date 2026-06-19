@@ -108,9 +108,11 @@ export default function StatsTab({ yearMonth, refreshKey }: StatsTabProps) {
     <div className="flex flex-col min-h-full">
 
       {/* ── 수입/지출 전환 탭 ────────────────────────────── */}
+      {/* sticky top-0: 콘텐츠 스크롤 시 탭 바가 main 상단에 고정
+          bg-primary 지정 필수 — 없으면 스크롤 콘텐츠가 뒤에 비침 */}
       <div
-        className="flex border-b"
-        style={{ borderColor: 'var(--border)' }}
+        className="flex border-b sticky top-0 z-10"
+        style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-primary)' }}
       >
         {(['expense', 'income'] as TabType[]).map(tab => (
           <button

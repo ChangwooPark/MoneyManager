@@ -156,12 +156,15 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
       onClick={onClose}
     >
       {/* ── 바텀 시트 본체 ──────────────────────────────────────
+          w-full max-w-md self-center: 앱 컨테이너(max-w-md) 너비로 제한
+            - 모바일: 화면 너비 전체 사용
+            - 웹 데스크톱: 448px 너비로 중앙 정렬 (뷰포트 전체를 채우지 않음)
           transform translateY: 드래그 거리만큼 시트를 아래로 이동
           transition: 드래그 중에는 즉각 반응, 스냅백/종료 시에는 부드럽게
           modal-sheet-max-height: 90dvh - safe-area-inset-bottom (globals.css)
       */}
       <div
-        className="rounded-t-2xl overflow-y-auto modal-sheet-max-height"
+        className="rounded-t-2xl overflow-y-auto modal-sheet-max-height w-full max-w-md self-center"
         style={{
           backgroundColor: 'var(--bg-secondary)',
           transform: `translateY(${dragOffset}px)`,

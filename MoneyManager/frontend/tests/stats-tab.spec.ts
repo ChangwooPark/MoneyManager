@@ -51,11 +51,10 @@ const MOCK_EMPTY: object[] = [];
 // ─── 공통 헬퍼 ────────────────────────────────────────────────
 
 // PIN 인증 모킹 + 앱 초기 진입
+// addInitScript로 sessionStorage에 mm_verified=true를 page.goto() 이전에 주입
+// → PIN 화면 자체를 건너뜀 (병렬 실행 시 PIN 버튼 클릭 타임아웃 방지)
 async function setupApp(page: Page, transactions: object[]): Promise<void> {
-  // PIN 인증 API 모킹
-  await page.route('**/settings/pin/verify', route =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) })
-  );
+  await page.addInitScript(() => sessionStorage.setItem('mm_verified', 'true'));
 
   // 거래 내역 API 모킹
   await page.route('**/transactions**', route =>
@@ -63,15 +62,7 @@ async function setupApp(page: Page, transactions: object[]): Promise<void> {
   );
 
   await page.goto('/');
-
-  // PIN 입력 화면이 뜨면 숫자 4개 클릭하여 인증 통과
-  const pinButtons = page.getByRole('button', { name: /^[0-9]$/ });
-  const pinCount = await pinButtons.count();
-  if (pinCount > 0) {
-    for (let i = 0; i < 4; i++) {
-      await page.getByRole('button', { name: '1' }).first().click();
-    }
-  }
+  await expect(page.getByRole('navigation')).toBeVisible();
 }
 
 // 통계 탭으로 이동하고 렌더링 완료 대기

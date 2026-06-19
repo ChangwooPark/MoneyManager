@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { getTransactions } from '@/lib/api';
 import { Transaction } from '@/types';
 
@@ -88,6 +88,10 @@ function getTodayStr(): string {
   ].join('-');
 }
 
+// ─── 드래그 임계값 ────────────────────────────────────────────
+// 이 픽셀 이상 아래로 드래그하면 바텀시트가 닫힘
+const DISMISS_THRESHOLD = 100;
+
 // ─── 요일 헤더 레이블 ─────────────────────────────────────────
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -108,7 +112,44 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
   // 클릭한 날짜 → 바텀시트 표시 제어 (null이면 닫힘)
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // ── 바텀시트 드래그로 닫기 상태 ───────────────────────────
+  const dragStartY     = useRef<number | null>(null);
+  const [dragOffset,  setDragOffset]  = useState(0);
+  const [isDragging,  setIsDragging]  = useState(false);
+
   const today = getTodayStr();
+
+  // ── 날짜가 바뀔 때마다 드래그 상태 초기화 ─────────────────
+  useEffect(() => {
+    setDragOffset(0);
+    setIsDragging(false);
+    dragStartY.current = null;
+  }, [selectedDate]);
+
+  // ── 바텀시트 닫기 (드래그/버튼/오버레이 공통) ─────────────
+  const closeSheet = () => setSelectedDate(null);
+
+  // ── 드래그 핸들러 ─────────────────────────────────────────
+  const handleDragStart = (e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+    setIsDragging(true);
+  };
+
+  const handleDragMove = (e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    const delta = e.touches[0].clientY - dragStartY.current;
+    if (delta > 0) setDragOffset(delta); // 아래 방향만 허용
+  };
+
+  const handleDragEnd = () => {
+    if (dragOffset >= DISMISS_THRESHOLD) {
+      closeSheet();
+    } else {
+      setDragOffset(0); // 스냅백
+    }
+    dragStartY.current = null;
+    setIsDragging(false);
+  };
 
   // ── 데이터 조회 ────────────────────────────────────────────
   useEffect(() => {
@@ -311,14 +352,14 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
       {/* ── 날짜 상세 바텀시트 ──────────────────────────────── */}
       {selectedDate && (
         <>
-          {/* 반투명 오버레이 */}
+          {/* 반투명 오버레이 — 드래그 거리에 따라 점차 투명해짐 */}
           <div
             className="fixed inset-0 z-40"
-            style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
-            onClick={() => setSelectedDate(null)}
+            style={{ backgroundColor: `rgba(0,0,0,${Math.max(0.1, 0.45 - dragOffset / 400)})` }}
+            onClick={closeSheet}
           />
 
-          {/* 바텀시트 본체 */}
+          {/* 바텀시트 본체 — 드래그 거리만큼 translateY로 내려감 */}
           <div
             className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl flex flex-col overflow-hidden"
             style={{
@@ -326,10 +367,17 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
               maxWidth: '28rem',
               margin: '0 auto',
               maxHeight: '65vh',
+              transform: `translateY(${dragOffset}px)`,
+              transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
             }}
           >
-            {/* 핸들 바 */}
-            <div className="flex justify-center pt-3 pb-1">
+            {/* 핸들 바 — 터치 드래그로 닫기 */}
+            <div
+              className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing"
+              onTouchStart={handleDragStart}
+              onTouchMove={handleDragMove}
+              onTouchEnd={handleDragEnd}
+            >
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: 'var(--border)' }} />
             </div>
 
@@ -342,7 +390,7 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
                 {formatDateHeader(selectedDate)}
               </span>
               <button
-                onClick={() => setSelectedDate(null)}
+                onClick={closeSheet}
                 className="text-lg leading-none px-2 py-1"
                 style={{ color: 'var(--text-secondary)' }}
                 aria-label="닫기"

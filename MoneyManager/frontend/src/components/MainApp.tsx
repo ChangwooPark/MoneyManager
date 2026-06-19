@@ -74,10 +74,11 @@ export default function MainApp() {
       {/* 탭 컨텐츠 영역
           flex-1: 남은 세로 공간을 모두 차지
           overflow-y-auto: 내용이 길면 세로 스크롤 활성화
+          overflow-hidden: 거래 입력 모달이 열려 있는 동안 배경 스크롤 차단
           flex flex-col: 자식 탭이 flex-1 로 높이를 채울 수 있도록 flex 컨텍스트 제공
                          (CalendarTab은 flex-1 으로 전체 높이를 채우고,
                           HomeTab·StatsTab은 자연 높이를 가져 overflow 시 스크롤됨) */}
-      <main className="flex-1 overflow-y-auto flex flex-col">
+      <main className={`flex-1 flex flex-col ${showForm ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         {/* 조건부 렌더링: 활성 탭에 해당하는 컴포넌트만 표시
             yearMonth를 props로 전달해 각 탭이 해당 월 데이터를 조회할 수 있게 함
             refreshKey: 저장 완료 시 변경되어 각 탭의 데이터를 재조회하게 함 */}
