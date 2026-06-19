@@ -65,6 +65,24 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
       .catch(() => {}); // 실패 시 폴백 유지
   }, []);
 
+  // ── 바텀시트 ref ─────────────────────────────────────────────
+  // 배경 스크롤 차단 시 시트 내부 터치는 허용하기 위해 필요
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // ── 모달 열린 동안 배경 스크롤 차단 (iOS Safari 대응) ────────
+  // iOS Safari는 내부 요소의 overflow:hidden을 무시하므로
+  // document 레벨에서 touchmove의 preventDefault()가 필요합니다.
+  // { passive: false }가 없으면 preventDefault()를 호출할 수 없습니다.
+  useEffect(() => {
+    const prevent = (e: TouchEvent) => {
+      // 시트 내부 터치는 차단하지 않음 → 시트 콘텐츠 스크롤 정상 동작
+      if (sheetRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    document.addEventListener('touchmove', prevent, { passive: false });
+    return () => document.removeEventListener('touchmove', prevent);
+  }, []);
+
   // ── 드래그로 닫기 상태 ────────────────────────────────────────
   // dragStartY: ref 사용 — 터치 이동마다 state 업데이트 비용 절감
   const dragStartY = useRef<number | null>(null);
@@ -164,6 +182,7 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
           modal-sheet-max-height: 90dvh - safe-area-inset-bottom (globals.css)
       */}
       <div
+        ref={sheetRef}
         className="rounded-t-2xl overflow-y-auto modal-sheet-max-height w-full max-w-md self-center"
         style={{
           backgroundColor: 'var(--bg-secondary)',
