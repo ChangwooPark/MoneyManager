@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getTransactions, getBudget } from '@/lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { getTransactions, getBudget, deleteTransaction } from '@/lib/api';
 import { Transaction, Budget } from '@/types';
 
 // ─── Props 타입 정의 ───────────────────────────────────────────
 interface HomeTabProps {
-  yearMonth: string;  // 상단 연월 선택기에서 전달받은 현재 연월 (예: "2026-06")
-  refreshKey: number; // 거래 저장 완료 시 증가 → 목록 재조회 트리거
+  yearMonth: string;   // 상단 연월 선택기에서 전달받은 현재 연월
+  refreshKey: number;  // 거래 저장 완료 시 증가 → 목록 재조회 트리거
+  onRefresh: () => void;              // 삭제 완료 후 전체 탭 갱신
+  onEdit: (tx: Transaction) => void;  // 수정 버튼 클릭 → MainApp에서 폼 열기
 }
 
 // ─── 날짜별 그룹 타입 ──────────────────────────────────────────
-// 거래 목록을 날짜별로 묶어 표시할 때 사용합니다.
 interface DayGroup {
-  date: string;              // YYYY-MM-DD
+  date: string;
   transactions: Transaction[];
-  totalIncome: number;       // 해당 날짜 총 수입
-  totalExpense: number;      // 해당 날짜 총 지출
+  totalIncome: number;
+  totalExpense: number;
 }
 
 // ─── 날짜 헤더 포맷 함수 ───────────────────────────────────────
@@ -29,33 +30,27 @@ function formatDateHeader(dateStr: string): string {
 }
 
 // ─── 금액 엔화 포맷 함수 ───────────────────────────────────────
-// 12000 → "¥12,000"
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
 }
 
-// ─── Firestore 타임스탬프 → 초 단위 숫자 ──────────────────────
-// 같은 날짜 내에서 등록 순서로 정렬할 때 사용합니다.
 function createdAtSeconds(tx: Transaction): number {
   return tx.createdAt?._seconds ?? 0;
 }
 
-// ─── 거래 내역을 날짜별로 그룹화하는 함수 ─────────────────────
-// 정렬 기준: 날짜 DESC → 같은 날짜 내에서는 등록일 DESC (최신 등록 먼저)
+// ─── 거래 내역을 날짜별로 그룹화 ──────────────────────────────
 function groupByDate(transactions: Transaction[]): DayGroup[] {
   const sorted = [...transactions].sort((a, b) => {
     if (b.date !== a.date) return b.date.localeCompare(a.date);
     return createdAtSeconds(b) - createdAtSeconds(a);
   });
 
-  // Map으로 날짜별 그룹화 (삽입 순서 유지)
   const map = new Map<string, Transaction[]>();
   for (const tx of sorted) {
     if (!map.has(tx.date)) map.set(tx.date, []);
     map.get(tx.date)!.push(tx);
   }
 
-  // DayGroup 배열로 변환
   return [...map.entries()].map(([date, txs]) => ({
     date,
     transactions: txs,
@@ -65,8 +60,7 @@ function groupByDate(transactions: Transaction[]): DayGroup[] {
 }
 
 // ─── HomeTab 컴포넌트 ──────────────────────────────────────────
-// 홈 탭 화면입니다. 상단에 예산 대시보드, 하단에 날짜별 거래 내역 목록을 표시합니다.
-export default function HomeTab({ yearMonth, refreshKey }: HomeTabProps) {
+export default function HomeTab({ yearMonth, refreshKey, onRefresh, onEdit }: HomeTabProps) {
 
   // ── 데이터 상태 ──────────────────────────────────────────────
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -74,18 +68,34 @@ export default function HomeTab({ yearMonth, refreshKey }: HomeTabProps) {
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
 
-  // ── 데이터 조회 effect ────────────────────────────────────────
-  // yearMonth 또는 refreshKey가 바뀔 때마다 재조회합니다.
-  // refreshKey: 거래 저장 완료 시 MainApp에서 +1 → 목록이 즉시 갱신됨
+  // ── 거래 상세 시트 상태 ───────────────────────────────────────
+  const [selectedTx,    setSelectedTx]    = useState<Transaction | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError,   setDeleteError]   = useState('');
+
+  // 상세 시트 본체 ref — iOS 배경 스크롤 차단 시 시트 내부 터치는 허용
+  const detailSheetRef = useRef<HTMLDivElement>(null);
+
+  // ── 상세 시트 열린 동안 배경 스크롤 차단 (iOS Safari 대응) ────
   useEffect(() => {
-    let cancelled = false; // 언마운트 또는 재조회 시 이전 응답 무시
+    if (!selectedTx) return;
+    const prevent = (e: TouchEvent) => {
+      if (detailSheetRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    document.addEventListener('touchmove', prevent, { passive: false });
+    return () => document.removeEventListener('touchmove', prevent);
+  }, [selectedTx]);
+
+  // ── 데이터 조회 ───────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
 
     async function fetchData() {
       setLoading(true);
       setError('');
       try {
-        // 거래 내역과 예산을 병렬로 조회하여 속도 최적화
-        // 예산이 미설정된 경우 API가 404를 반환하므로 catch로 null 처리
         const [txList, budgetData] = await Promise.all([
           getTransactions(yearMonth),
           getBudget(yearMonth).catch(() => null),
@@ -106,18 +116,36 @@ export default function HomeTab({ yearMonth, refreshKey }: HomeTabProps) {
   }, [yearMonth, refreshKey]);
 
   // ── 집계값 계산 ───────────────────────────────────────────────
-  // 당월 총 수입 / 총 지출 / 잔여 예산 계산
   const totalIncome  = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const remaining    = budget ? budget.amount - totalExpense : null;
-
-  // 예산 대비 지출 비율 (진행 바용, 0~1 클램프)
   const budgetRatio  = budget && budget.amount > 0
     ? Math.min(1, totalExpense / budget.amount)
     : 0;
-
-  // 날짜별 그룹화된 거래 목록
   const dayGroups = groupByDate(transactions);
+
+  // ── 상세 시트 닫기 ────────────────────────────────────────────
+  const closeDetail = () => {
+    setSelectedTx(null);
+    setDeleteConfirm(false);
+    setDeleteError('');
+  };
+
+  // ── 거래 삭제 ────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!selectedTx?.id) return;
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await deleteTransaction(selectedTx.id);
+      closeDetail();
+      onRefresh(); // 목록 갱신
+    } catch {
+      setDeleteError('삭제에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   // ── 로딩 / 오류 상태 렌더링 ─────────────────────────────────
   if (loading) {
@@ -137,178 +165,317 @@ export default function HomeTab({ yearMonth, refreshKey }: HomeTabProps) {
   }
 
   return (
-    <div className="px-4 py-4 flex flex-col gap-4">
+    <>
+      <div className="px-4 py-4 flex flex-col gap-4">
 
-      {/* ── 예산 대시보드 ────────────────────────────────────────
-          상단에 고정되어 당월 예산 현황을 한눈에 파악할 수 있도록 합니다.
-          예산 미설정 시에는 안내 문구를 표시합니다.                    */}
-      <div
-        className="rounded-2xl p-4 flex flex-col gap-3"
-        style={{ backgroundColor: 'var(--bg-secondary)' }}
-      >
-        {/* 예산 현황 3분할: 예산 / 지출 / 잔여 */}
-        <div className="flex justify-between items-start">
+        {/* ── 예산 대시보드 ──────────────────────────────────────── */}
+        <div
+          className="rounded-2xl p-4 flex flex-col gap-3"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
+        >
+          <div className="flex justify-between items-start">
 
-          {/* 설정 예산 */}
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>예산</span>
-            <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-              {budget ? formatYen(budget.amount) : '미설정'}
-            </span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>예산</span>
+              <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                {budget ? formatYen(budget.amount) : '미설정'}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-0.5 items-center">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>지출</span>
+              <span className="text-base font-bold" style={{ color: 'var(--expense)' }}>
+                {formatYen(totalExpense)}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-0.5 items-end">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                {budget ? '잔여' : '수입'}
+              </span>
+              <span
+                className="text-base font-bold"
+                style={{
+                  color: remaining !== null
+                    ? (remaining >= 0 ? 'var(--income)' : 'var(--expense)')
+                    : 'var(--income)',
+                }}
+              >
+                {remaining !== null ? formatYen(Math.abs(remaining)) : formatYen(totalIncome)}
+              </span>
+            </div>
           </div>
 
-          {/* 당월 지출 */}
-          <div className="flex flex-col gap-0.5 items-center">
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>지출</span>
-            <span className="text-base font-bold" style={{ color: 'var(--expense)' }}>
-              {formatYen(totalExpense)}
-            </span>
-          </div>
+          {budget && budget.amount > 0 && (
+            <div className="flex flex-col gap-1">
+              <div
+                className="w-full rounded-full overflow-hidden"
+                style={{ height: '6px', backgroundColor: 'var(--bg-card)' }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${budgetRatio * 100}%`,
+                    backgroundColor: budgetRatio >= 0.9 ? 'var(--expense)' : 'var(--income)',
+                  }}
+                />
+              </div>
+              <p className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>
+                {Math.round(budgetRatio * 100)}% 소진
+                {remaining !== null && remaining < 0 && (
+                  <span style={{ color: 'var(--expense)' }}> · {formatYen(Math.abs(remaining))} 초과</span>
+                )}
+              </p>
+            </div>
+          )}
 
-          {/* 잔여 예산 — 예산 미설정 시 당월 순이익(수입-지출) 표시 */}
-          <div className="flex flex-col gap-0.5 items-end">
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              {budget ? '잔여' : '수입'}
-            </span>
-            <span
-              className="text-base font-bold"
-              style={{
-                // 잔여 예산이 음수(초과)면 빨강, 양수면 초록, 예산 미설정 시 초록
-                color: remaining !== null
-                  ? (remaining >= 0 ? 'var(--income)' : 'var(--expense)')
-                  : 'var(--income)',
-              }}
-            >
-              {remaining !== null ? formatYen(Math.abs(remaining)) : formatYen(totalIncome)}
-            </span>
-          </div>
+          {totalIncome > 0 && (
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              이번 달 수입{' '}
+              <span style={{ color: 'var(--income)' }}>{formatYen(totalIncome)}</span>
+            </p>
+          )}
         </div>
 
-        {/* 예산 소진 진행 바 — 예산 설정 시에만 표시 */}
-        {budget && budget.amount > 0 && (
-          <div className="flex flex-col gap-1">
-            <div
-              className="w-full rounded-full overflow-hidden"
-              style={{ height: '6px', backgroundColor: 'var(--bg-card)' }}
-            >
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${budgetRatio * 100}%`,
-                  // 90% 이상 소진 시 빨강 경고, 미만은 초록
-                  backgroundColor: budgetRatio >= 0.9 ? 'var(--expense)' : 'var(--income)',
-                }}
-              />
-            </div>
-            <p className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>
-              {Math.round(budgetRatio * 100)}% 소진
-              {remaining !== null && remaining < 0 && (
-                <span style={{ color: 'var(--expense)' }}> · {formatYen(Math.abs(remaining))} 초과</span>
-              )}
+        {/* ── 날짜별 거래 내역 목록 ──────────────────────────────── */}
+        {dayGroups.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-2">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              이번 달 거래 내역이 없습니다.
+            </p>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              + 버튼을 눌러 첫 번째 내역을 추가해 보세요.
             </p>
           </div>
-        )}
+        ) : (
+          <div className="flex flex-col gap-4">
+            {dayGroups.map((group) => {
+              const net = group.totalIncome - group.totalExpense;
+              return (
+                <div key={group.date} className="flex flex-col gap-1">
 
-        {/* 당월 수입 요약 — 항상 표시 */}
-        {totalIncome > 0 && (
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            이번 달 수입{' '}
-            <span style={{ color: 'var(--income)' }}>{formatYen(totalIncome)}</span>
-          </p>
+                  {/* ── 날짜 헤더 ── */}
+                  {/* border-b: 날짜 헤더와 거래 항목 사이 시각적 구분선 */}
+                  <div
+                    className="flex justify-between items-center px-1 pb-1 mb-1"
+                    style={{ borderBottom: '1px solid var(--border)' }}
+                  >
+                    <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                      {formatDateHeader(group.date)}
+                    </span>
+
+                    {/* 날짜별 수입/지출 소계 + 순수익 */}
+                    <div className="flex gap-2 text-xs">
+                      {group.totalIncome > 0 && (
+                        <span style={{ color: 'var(--income)' }}>+{formatYen(group.totalIncome)}</span>
+                      )}
+                      {group.totalExpense > 0 && (
+                        <span style={{ color: 'var(--expense)' }}>-{formatYen(group.totalExpense)}</span>
+                      )}
+                      {/* 수입과 지출이 모두 있을 때만 순수익(= income - expense) 표시 */}
+                      {group.totalIncome > 0 && group.totalExpense > 0 && (
+                        <span style={{ color: net >= 0 ? 'var(--income)' : 'var(--expense)' }}>
+                          ={formatYen(Math.abs(net))}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── 해당 날짜의 거래 항목들 ── */}
+                  <div
+                    className="rounded-2xl overflow-hidden"
+                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                  >
+                    {group.transactions.map((tx, i) => (
+                      <div key={tx.id ?? i}>
+                        {i > 0 && (
+                          <div className="mx-4" style={{ height: '1px', backgroundColor: 'var(--border)' }} />
+                        )}
+
+                        {/* 거래 항목 행 — 클릭 시 상세 시트 열림 */}
+                        <div
+                          className="flex items-center justify-between px-4 py-3 gap-3 cursor-pointer active:opacity-60 transition-opacity"
+                          onClick={() => { setSelectedTx(tx); setDeleteConfirm(false); setDeleteError(''); }}
+                        >
+                          {/* 왼쪽: 카테고리 칩 + 메모 */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{
+                                backgroundColor: tx.type === 'income'
+                                  ? 'rgba(52, 211, 153, 0.15)'
+                                  : 'rgba(248, 113, 113, 0.15)',
+                                color: tx.type === 'income' ? 'var(--income)' : 'var(--expense)',
+                              }}
+                            >
+                              {tx.category}
+                            </span>
+                            {/* 메모 — 있을 때만 표시, 긴 경우 말줄임 */}
+                            {tx.memo && tx.memo !== tx.category && (
+                              <span
+                                className="text-sm truncate"
+                                style={{ color: 'var(--text-secondary)' }}
+                              >
+                                {tx.memo}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* 오른쪽: 금액 */}
+                          <span
+                            className="shrink-0 text-sm font-semibold"
+                            style={{
+                              color: tx.type === 'income' ? 'var(--income)' : 'var(--expense)',
+                            }}
+                          >
+                            {tx.type === 'income' ? '+' : '-'}{formatYen(tx.amount)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* ── 날짜별 거래 내역 목록 ────────────────────────────────
-          거래가 없을 때는 빈 상태 안내 문구를 표시합니다.             */}
-      {dayGroups.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-2">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            이번 달 거래 내역이 없습니다.
-          </p>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            + 버튼을 눌러 첫 번째 내역을 추가해 보세요.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {dayGroups.map((group) => (
-            <div key={group.date} className="flex flex-col gap-1">
+      {/* ── 거래 상세 시트 ──────────────────────────────────────────
+          selectedTx가 설정되면 하단에서 슬라이드업으로 표시됩니다.
+          오버레이 클릭 → 닫힘, 시트 내부 클릭 → 이벤트 버블링 차단  */}
+      {selectedTx && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end"
+          style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+          onClick={closeDetail}
+        >
+          <div
+            ref={detailSheetRef}
+            className="rounded-t-2xl w-full max-w-md self-center"
+            style={{ backgroundColor: 'var(--bg-secondary)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 핸들 바 */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: 'var(--border)' }} />
+            </div>
 
-              {/* ── 날짜 헤더 ── */}
-              <div className="flex justify-between items-center px-1 mb-1">
-                <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                  {formatDateHeader(group.date)}
-                </span>
-                {/* 날짜별 수입/지출 소계 */}
-                <div className="flex gap-2 text-xs">
-                  {group.totalIncome > 0 && (
-                    <span style={{ color: 'var(--income)' }}>+{formatYen(group.totalIncome)}</span>
-                  )}
-                  {group.totalExpense > 0 && (
-                    <span style={{ color: 'var(--expense)' }}>-{formatYen(group.totalExpense)}</span>
-                  )}
+            {!deleteConfirm ? (
+              /* ── 상세 보기 단계 ── */
+              <div
+                className="px-5 pb-8 flex flex-col gap-4"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+              >
+                {/* 헤더 */}
+                <div className="flex items-center justify-between pt-1">
+                  <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                    거래 상세
+                  </h2>
+                  <button
+                    onClick={closeDetail}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-xl"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* 거래 정보 카드 */}
+                <div
+                  className="rounded-2xl p-4 flex flex-col gap-3"
+                  style={{ backgroundColor: 'var(--bg-card)' }}
+                >
+                  {[
+                    { label: '날짜',   value: formatDateHeader(selectedTx.date),                        color: 'var(--text-primary)' },
+                    { label: '유형',   value: selectedTx.type === 'income' ? '수입' : '지출',            color: selectedTx.type === 'income' ? 'var(--income)' : 'var(--expense)' },
+                    { label: '카테고리', value: selectedTx.category,                                    color: 'var(--text-primary)' },
+                    { label: '금액',   value: `${selectedTx.type === 'income' ? '+' : '-'}${formatYen(selectedTx.amount)}`, color: selectedTx.type === 'income' ? 'var(--income)' : 'var(--expense)' },
+                    ...(selectedTx.memo ? [{ label: '메모', value: selectedTx.memo, color: 'var(--text-secondary)' }] : []),
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="flex justify-between items-start gap-4">
+                      <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)' }}>
+                        {label}
+                      </span>
+                      <span className="text-sm font-medium text-right" style={{ color }}>
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 수정 / 삭제 버튼 */}
+                <div className="flex gap-3">
+                  <button
+                    className="flex-1 py-3 rounded-xl text-sm font-bold border"
+                    style={{
+                      color: 'var(--accent)',
+                      borderColor: 'var(--accent)',
+                      backgroundColor: 'transparent',
+                    }}
+                    onClick={() => {
+                      const tx = selectedTx;
+                      closeDetail();
+                      onEdit(tx); // MainApp에서 수정 폼 열기
+                    }}
+                  >
+                    수정
+                  </button>
+                  <button
+                    className="flex-1 py-3 rounded-xl text-sm font-bold"
+                    style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
+                    onClick={() => setDeleteConfirm(true)}
+                  >
+                    삭제
+                  </button>
                 </div>
               </div>
 
-              {/* ── 해당 날짜의 거래 항목들 ── */}
+            ) : (
+              /* ── 삭제 확인 단계 ── */
               <div
-                className="rounded-2xl overflow-hidden"
-                style={{ backgroundColor: 'var(--bg-secondary)' }}
+                className="px-5 pb-8 flex flex-col gap-4"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
               >
-                {group.transactions.map((tx, i) => (
-                  <div key={tx.id ?? i}>
-                    {/* 항목 간 구분선 (첫 번째 항목 제외) */}
-                    {i > 0 && (
-                      <div className="mx-4" style={{ height: '1px', backgroundColor: 'var(--border)' }} />
-                    )}
+                <div className="pt-2 text-center flex flex-col gap-1">
+                  <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    거래를 삭제하시겠습니까?
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {selectedTx.category} {selectedTx.type === 'income' ? '+' : '-'}{formatYen(selectedTx.amount)}
+                  </p>
+                </div>
 
-                    {/* 거래 항목 행 */}
-                    <div className="flex items-center justify-between px-4 py-3 gap-3">
+                {deleteError && (
+                  <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>{deleteError}</p>
+                )}
 
-                      {/* 왼쪽: 카테고리 칩 + 메모/설명 */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        {/* 카테고리 칩 */}
-                        <span
-                          className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
-                          style={{
-                            backgroundColor: tx.type === 'income'
-                              ? 'rgba(52, 211, 153, 0.15)'   // --income 15% 투명도
-                              : 'rgba(248, 113, 113, 0.15)', // --expense 15% 투명도
-                            color: tx.type === 'income' ? 'var(--income)' : 'var(--expense)',
-                          }}
-                        >
-                          {tx.category}
-                        </span>
-
-                        {/* 메모 또는 설명 — 길면 말줄임 처리 */}
-                        {tx.memo && tx.memo !== tx.category && (
-                          <span
-                            className="text-sm truncate"
-                            style={{ color: 'var(--text-secondary)' }}
-                          >
-                            {tx.memo}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* 오른쪽: 금액 (수입=초록, 지출=빨강) */}
-                      <span
-                        className="shrink-0 text-sm font-semibold"
-                        style={{
-                          color: tx.type === 'income' ? 'var(--income)' : 'var(--expense)',
-                        }}
-                      >
-                        {tx.type === 'income' ? '+' : '-'}{formatYen(tx.amount)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                <div className="flex gap-3">
+                  <button
+                    className="flex-1 py-3 rounded-xl text-sm font-bold border"
+                    style={{
+                      color: 'var(--text-secondary)',
+                      borderColor: 'var(--border)',
+                      backgroundColor: 'transparent',
+                    }}
+                    onClick={() => { setDeleteConfirm(false); setDeleteError(''); }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
+                    disabled={deleteLoading}
+                    onClick={handleDelete}
+                  >
+                    {deleteLoading ? '삭제 중...' : '삭제'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 }

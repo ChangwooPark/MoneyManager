@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createTransaction, getCategories } from '@/lib/api';
+import { createTransaction, updateTransaction, getCategories } from '@/lib/api';
 import { Transaction } from '@/types';
 
 // API 조회 실패 시 사용할 기본 카테고리 목록
@@ -17,6 +17,7 @@ const DISMISS_THRESHOLD = 100;
 interface TransactionFormProps {
   onClose: () => void;
   onSaved: () => void;
+  initialData?: Transaction; // 제공 시 수정 모드 (PUT), 미제공 시 추가 모드 (POST)
 }
 
 // ─── 오늘 날짜를 YYYY-MM-DD 형식으로 반환하는 함수 ─────────────
@@ -39,14 +40,16 @@ function formatYen(value: number): string {
 // 수입/지출 내역을 입력하는 바텀 시트(Bottom Sheet) 형태의 폼입니다.
 // 화면 하단에서 슬라이드업 되는 방식으로 표시됩니다.
 // 핸들 바를 아래로 드래그하면 닫히고, 카테고리 칩으로 분류를 선택합니다.
-export default function TransactionForm({ onClose, onSaved }: TransactionFormProps) {
+export default function TransactionForm({ onClose, onSaved, initialData }: TransactionFormProps) {
+  // initialData가 있으면 수정 모드
+  const isEdit = !!initialData?.id;
 
   // ── 폼 입력 상태 ──────────────────────────────────────────────
-  const [type, setType]         = useState<'income' | 'expense'>('expense'); // 기본값: 지출
-  const [date, setDate]         = useState(getTodayString());                // 기본값: 오늘
-  const [category, setCategory] = useState('');   // 선택된 카테고리 칩
-  const [amount, setAmount]     = useState('');   // 금액 (문자열로 관리 후 저장 시 숫자 변환)
-  const [memo, setMemo]         = useState('');   // 메모 (선택 항목)
+  const [type, setType]         = useState<'income' | 'expense'>(initialData?.type ?? 'expense');
+  const [date, setDate]         = useState(initialData?.date ?? getTodayString());
+  const [category, setCategory] = useState(initialData?.category ?? '');
+  const [amount, setAmount]     = useState(initialData?.amount ? String(initialData.amount) : '');
+  const [memo, setMemo]         = useState(initialData?.memo ?? '');
   const [loading, setLoading]   = useState(false);  // 저장 중 여부
   const [error, setError]       = useState('');     // 유효성 검사 오류 메시지
 
@@ -112,12 +115,16 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
         date,
         category,
         amount: Number(amount),
-        // description: 메모가 있으면 메모 내용, 없으면 카테고리명 (백엔드 스키마 호환)
         description: memo.trim() || category,
         memo: memo.trim() || undefined,
       };
 
-      await createTransaction(data);
+      // 수정 모드: PUT /transactions/:id, 추가 모드: POST /transactions
+      if (isEdit && initialData?.id) {
+        await updateTransaction(initialData.id, data);
+      } else {
+        await createTransaction(data);
+      }
       onSaved();
       onClose();
     } catch {
@@ -216,7 +223,7 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
           {/* ── 헤더: 제목 + 닫기 버튼 ─────────────────────── */}
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-              내역 추가
+              {isEdit ? '내역 수정' : '내역 추가'}
             </h2>
             <button
               onClick={onClose}
@@ -364,7 +371,7 @@ export default function TransactionForm({ onClose, onSaved }: TransactionFormPro
             className="w-full py-4 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
             style={{ backgroundColor: accentColor, color: '#000' }}
           >
-            {loading ? '저장 중...' : '저장'}
+            {loading ? '저장 중...' : isEdit ? '수정 저장' : '저장'}
           </button>
 
         </div>

@@ -461,3 +461,127 @@ test.describe('거래 저장 후 목록 자동 갱신 (refreshKey)', () => {
     await expect(page.getByText('-¥3,000').first()).toBeVisible({ timeout: 5000 });
   });
 });
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 6. 날짜 헤더 — 순수익 표시 (Phase 14.3)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+test.describe('날짜 헤더 — 순수익 표시', () => {
+  // MOCK_TRANSACTIONS_MIXED: 오늘 수입 ¥250,000 + 지출 ¥1,500 → 순수익 ¥248,500
+  test.beforeEach(async ({ page }) => {
+    await mockTransactions(page, MOCK_TRANSACTIONS_MIXED);
+    await mockBudget(page, null);
+    await goToMainApp(page);
+  });
+
+  test('수입·지출 모두 있는 날 헤더에 =¥248,500 순수익이 표시된다', async ({ page }) => {
+    await expect(page.getByText('=¥248,500')).toBeVisible();
+  });
+
+  test('지출만 있는 날(어제) 헤더에는 순수익이 표시되지 않는다', async ({ page }) => {
+    // 어제: 지출 ¥5,000만 있으므로 "=" 기호가 어제 헤더 근처에 없어야 함
+    // 오늘의 "=¥248,500"은 있지만 어제 헤더 영역의 "=" 는 없어야 함
+    const yesterdayHeader = page.getByText(formatDateHeader(YESTERDAY));
+    await expect(yesterdayHeader).toBeVisible();
+    // 어제 날짜 헤더의 부모 그룹 안에 "=" 로 시작하는 순수익 요소가 없음을 확인
+    // → 페이지 전체에 "=¥" 가 포함된 텍스트가 정확히 1개만 있어야 함 (오늘 것만)
+    await expect(page.locator('text=/=¥/')).toHaveCount(1);
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 7. 거래 항목 클릭 — 상세 시트 / 수정 / 삭제 (Phase 14.3)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+test.describe('거래 항목 클릭 — 상세 시트', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTransactions(page, MOCK_TRANSACTIONS_MIXED);
+    await mockBudget(page, MOCK_BUDGET_NORMAL);
+    await goToMainApp(page);
+  });
+
+  test('거래 항목 클릭 시 상세 시트가 열린다', async ({ page }) => {
+    // "주유비 결제" 메모를 클릭하면 상세 시트 헤더가 보여야 함
+    await page.getByText('주유비 결제').click();
+    await expect(page.getByText('거래 상세')).toBeVisible();
+  });
+
+  test('상세 시트에 유형·카테고리·금액·메모가 올바르게 표시된다', async ({ page }) => {
+    await page.getByText('주유비 결제').click();
+    await expect(page.getByText('거래 상세')).toBeVisible();
+    // 유형
+    await expect(page.getByText('지출').first()).toBeVisible();
+    // 카테고리 (detail card 안에 표시되는 것)
+    // 금액 — detail card 안: "-¥1,500" (거래 행의 -¥1,500과 별개로 한 번 더 표시)
+    await expect(page.getByText('-¥1,500').first()).toBeVisible();
+    // 메모
+    await expect(page.getByText('주유비 결제').first()).toBeVisible();
+  });
+
+  test('✕ 버튼 클릭 시 상세 시트가 닫힌다', async ({ page }) => {
+    await page.getByText('주유비 결제').click();
+    await expect(page.getByText('거래 상세')).toBeVisible();
+
+    await page.getByRole('button', { name: '✕' }).click();
+    await expect(page.getByText('거래 상세')).not.toBeVisible();
+  });
+
+  test('오버레이 클릭 시 상세 시트가 닫힌다', async ({ page }) => {
+    await page.getByText('주유비 결제').click();
+    await expect(page.getByText('거래 상세')).toBeVisible();
+
+    // 오버레이 영역(시트 바깥 빈 공간)을 클릭 — 화면 좌상단은 시트 밖
+    await page.mouse.click(10, 10);
+    await expect(page.getByText('거래 상세')).not.toBeVisible();
+  });
+
+  test('[수정] 클릭 시 수정 폼이 열리고 기존 금액이 채워진다', async ({ page }) => {
+    await page.getByText('주유비 결제').click();
+    await page.getByRole('button', { name: '수정' }).click();
+
+    // 상세 시트가 닫히고 수정 폼이 열림
+    await expect(page.getByRole('heading', { name: '내역 수정' })).toBeVisible();
+    // 기존 금액 1500이 입력란에 채워져 있음
+    await expect(page.getByPlaceholder('0')).toHaveValue('1500');
+  });
+
+  test('[삭제] 클릭 시 삭제 확인 화면으로 전환된다', async ({ page }) => {
+    await page.getByText('주유비 결제').click();
+    await expect(page.getByText('거래 상세')).toBeVisible();
+
+    await page.getByRole('button', { name: '삭제' }).click();
+
+    await expect(page.getByText('거래를 삭제하시겠습니까?')).toBeVisible();
+    await expect(page.getByRole('button', { name: '취소' })).toBeVisible();
+  });
+
+  test('삭제 확인 → [취소] 클릭 시 상세 보기 화면으로 복귀한다', async ({ page }) => {
+    await page.getByText('주유비 결제').click();
+    await page.getByRole('button', { name: '삭제' }).click();
+    await expect(page.getByText('거래를 삭제하시겠습니까?')).toBeVisible();
+
+    await page.getByRole('button', { name: '취소' }).click();
+
+    // 상세 보기로 복귀 (수정·삭제 버튼이 다시 보임)
+    await expect(page.getByText('거래 상세')).toBeVisible();
+    await expect(page.getByRole('button', { name: '수정' })).toBeVisible();
+  });
+
+  test('삭제 확인 → [삭제] 클릭 후 상세 시트가 닫힌다', async ({ page }) => {
+    // DELETE 요청을 모킹 — route.fallback()으로 GET 요청은 기존 mockTransactions에 위임
+    await page.route('**/transactions/**', route => {
+      if (route.request().method() === 'DELETE') {
+        return route.fulfill({ status: 204 });
+      }
+      route.fallback();
+    });
+
+    await page.getByText('주유비 결제').click();
+    await page.getByRole('button', { name: '삭제' }).click();
+    await expect(page.getByText('거래를 삭제하시겠습니까?')).toBeVisible();
+
+    // 삭제 확인 버튼 (exact: true — "삭제" 정확히 매칭, "거래를 삭제하시겠습니까?" 미포함)
+    await page.getByRole('button', { name: '삭제', exact: true }).click();
+
+    // 삭제 성공 → closeDetail() 호출 → 시트 닫힘
+    await expect(page.getByText('거래 상세')).not.toBeVisible({ timeout: 5000 });
+  });
+});
