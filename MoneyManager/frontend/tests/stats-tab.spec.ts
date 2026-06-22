@@ -325,3 +325,135 @@ test.describe('통계 탭 — 연월 연동', () => {
   });
 
 });
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Phase 16 — 카테고리 상세 시트
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// 메모 포함 모의 데이터 — 상세 시트 메모 표시 검증에 사용
+const MOCK_WITH_MEMO: object[] = [
+  {
+    id: 'm1', type: 'expense', amount: 8000, category: '식비',
+    date: TODAY, memo: '편의점 점심',
+    createdAt: { _seconds: 10, _nanoseconds: 0 },
+  },
+  {
+    id: 'm2', type: 'expense', amount: 5000, category: '식비',
+    date: TODAY, memo: '카페 라떼',
+    createdAt: { _seconds: 11, _nanoseconds: 0 },
+  },
+  {
+    id: 'm3', type: 'expense', amount: 30000, category: '쇼핑',
+    date: TODAY,
+    createdAt: { _seconds: 12, _nanoseconds: 0 },
+  },
+];
+
+test.describe('통계 탭 — 카테고리 상세 시트 (Phase 16)', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupApp(page, MOCK_TRANSACTIONS);
+    await goToStatsTab(page);
+  });
+
+  test('카테고리 행 클릭 시 상세 시트가 열린다', async ({ page }) => {
+    await page.getByText('식비').click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+  });
+
+  test('상세 시트 헤더에 카테고리명이 표시된다', async ({ page }) => {
+    // 식비 클릭 — 시트 안에도 "식비"가 나오므로 first()로 행을 특정
+    await page.getByText('식비').first().click();
+    // 시트가 열렸는지: 닫기 버튼 존재 확인
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+    // 헤더에 합계 금액 (식비 3건 = ¥15,000)
+    await expect(page.getByText('¥15,000').first()).toBeVisible();
+  });
+
+  test('상세 시트에 해당 카테고리 거래 건수가 모두 표시된다', async ({ page }) => {
+    await page.getByText('식비').first().click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+    // 식비 3건 → 금액이 각각 표시됨
+    await expect(page.getByText('¥8,000').first()).toBeVisible();
+    await expect(page.getByText('¥5,000').first()).toBeVisible();
+    await expect(page.getByText('¥2,000').first()).toBeVisible();
+  });
+
+  test('상세 시트에 날짜가 "M월 D일" 형식으로 표시된다', async ({ page }) => {
+    await page.getByText('식비').first().click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+    // TODAY = `${YM}-15` → "15일" 포함
+    await expect(page.getByText(/15일/).first()).toBeVisible();
+  });
+
+  test('✕ 버튼 클릭 시 상세 시트가 닫힌다', async ({ page }) => {
+    await page.getByText('식비').first().click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+
+    await page.getByRole('button', { name: '닫기' }).click();
+    await expect(page.getByRole('button', { name: '닫기' })).not.toBeVisible();
+  });
+
+  test('오버레이 클릭 시 상세 시트가 닫힌다', async ({ page }) => {
+    await page.getByText('식비').first().click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+
+    // 오버레이(좌상단 빈 공간) 클릭
+    await page.mouse.click(10, 10);
+    await expect(page.getByRole('button', { name: '닫기' })).not.toBeVisible();
+  });
+
+  test('[수입] 탭 전환 시 열려 있던 시트가 닫힌다', async ({ page }) => {
+    await page.getByText('식비').first().click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+
+    await page.getByRole('button', { name: '수입' }).click();
+    await expect(page.getByRole('button', { name: '닫기' })).not.toBeVisible();
+  });
+
+  test('수입 탭의 카테고리 클릭 시 해당 카테고리 거래가 표시된다', async ({ page }) => {
+    await page.getByRole('button', { name: '수입' }).click();
+    // 급여(1건 ¥250,000) 클릭
+    await page.getByText('급여').click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+    await expect(page.getByText('¥250,000').first()).toBeVisible();
+  });
+});
+
+test.describe('통계 탭 — 카테고리 상세 시트 메모 표시', () => {
+  test('거래에 메모가 있으면 시트 목록에 표시된다', async ({ page }) => {
+    await setupApp(page, MOCK_WITH_MEMO);
+    await goToStatsTab(page);
+
+    await page.getByText('식비').first().click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+
+    // 메모가 있는 항목
+    await expect(page.getByText('편의점 점심')).toBeVisible();
+    await expect(page.getByText('카페 라떼')).toBeVisible();
+  });
+});
+
+test.describe('통계 탭 — 카테고리 상세 시트 overscroll 관리', () => {
+  test('시트가 열리면 overscrollBehavior가 none이 된다', async ({ page }) => {
+    await setupApp(page, MOCK_TRANSACTIONS);
+    await goToStatsTab(page);
+
+    await page.getByText('식비').first().click();
+    await expect(page.getByRole('button', { name: '닫기' })).toBeVisible();
+
+    const value = await page.evaluate(() => document.body.style.overscrollBehavior);
+    expect(value).toBe('none');
+  });
+
+  test('시트를 닫으면 overscrollBehavior가 복원된다', async ({ page }) => {
+    await setupApp(page, MOCK_TRANSACTIONS);
+    await goToStatsTab(page);
+
+    await page.getByText('식비').first().click();
+    await page.getByRole('button', { name: '닫기' }).click();
+    await expect(page.getByRole('button', { name: '닫기' })).not.toBeVisible();
+
+    const value = await page.evaluate(() => document.body.style.overscrollBehavior);
+    expect(value).toBe('');
+  });
+});
