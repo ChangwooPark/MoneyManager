@@ -95,6 +95,22 @@ export async function deleteCategoryById(id: string): Promise<void> {
   await db.collection('categories').doc(id).delete();
 }
 
+// ─── Notification Settings ───────────────────────────────────
+
+const NOTIFICATION_DOC = 'notification_settings';
+
+// 알림 활성화 여부 조회 (기본값: true)
+export async function getNotificationEnabled(): Promise<boolean> {
+  const doc = await db.collection('settings').doc(NOTIFICATION_DOC).get();
+  if (!doc.exists) return true;
+  return (doc.data() as { enabled: boolean }).enabled;
+}
+
+// 알림 활성화 여부 저장
+export async function setNotificationEnabled(enabled: boolean): Promise<void> {
+  await db.collection('settings').doc(NOTIFICATION_DOC).set({ enabled }, { merge: true });
+}
+
 // ─────────────────────────────────────────────────────────────
 
 export interface Transaction {

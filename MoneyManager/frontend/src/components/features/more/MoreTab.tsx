@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { changePin, getBudget, setBudget, getCategories, addCategory, deleteCategory, verifyPin, deleteAllTransactions } from '@/lib/api';
+import {
+  changePin, getBudget, setBudget, getCategories, addCategory, deleteCategory,
+  verifyPin, deleteAllTransactions,
+  getNotificationSettings, updateNotificationSettings, sendTestNotification,
+} from '@/lib/api';
 import { Category } from '@/types';
 
 // ─── 현재 연월 헬퍼 ──────────────────────────────────────────
@@ -21,7 +25,7 @@ type CategoryTab = 'expense' | 'income';
 
 // 아코디언에서 한 번에 하나의 섹션만 열립니다.
 // null = 모두 닫힘
-type OpenSection = 'pin' | 'budget' | 'reset' | null;
+type OpenSection = 'pin' | 'budget' | 'notification' | 'reset' | null;
 
 // 데이터 초기화 플로우: PIN 입력 → 최종 확인 버튼
 type ResetStep = 'pin' | 'confirm';
@@ -74,6 +78,14 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   const [resetSuccess, setResetSuccess] = useState(false);
 
   // ─────────────────────────────────────────────────────────────
+  // LINE 알림 설정 상태
+  // ─────────────────────────────────────────────────────────────
+  const [notifEnabled,  setNotifEnabled]  = useState(true);
+  const [notifLoading,  setNotifLoading]  = useState(false);
+  const [testSending,   setTestSending]   = useState(false);
+  const [testResult,    setTestResult]    = useState<'sent' | 'error' | null>(null);
+
+  // ─────────────────────────────────────────────────────────────
   // 카테고리 관리 상태
   // ─────────────────────────────────────────────────────────────
   const [catTab,     setCatTab]     = useState<CategoryTab>('expense');
@@ -93,6 +105,9 @@ export default function MoreTab({ onReset }: MoreTabProps) {
     if (openSection !== 'budget') {
       setBudgetInput(''); setBudgetError(''); setBudgetSuccess(false);
     }
+    if (openSection !== 'notification') {
+      setTestResult(null);
+    }
     if (openSection !== 'reset') {
       setResetPin(''); setResetStep('pin');
       setResetError(''); setResetSuccess(false);
@@ -105,6 +120,13 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       .then(b => setCurrentBudget(b.amount))
       .catch(() => setCurrentBudget(null));
   }, [yearMonth]);
+
+  // ── LINE 알림 설정 조회 (마운트 시 1회) ───────────────────────
+  useEffect(() => {
+    getNotificationSettings()
+      .then(s => setNotifEnabled(s.enabled))
+      .catch(() => {}); // 오류 시 기본값(true) 유지
+  }, []);
 
   // ── 카테고리 목록 조회 ────────────────────────────────────────
   useEffect(() => {
@@ -212,6 +234,37 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       setResetStep('pin'); // 오류 시 PIN 입력 단계로 복귀
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // LINE 알림 ON/OFF 토글
+  // ─────────────────────────────────────────────────────────────
+  const handleNotifToggle = async () => {
+    setNotifLoading(true);
+    try {
+      const res = await updateNotificationSettings(!notifEnabled);
+      setNotifEnabled(res.enabled);
+    } catch {
+      // 오류 시 현재 상태 유지
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // LINE 테스트 메시지 발송
+  // ─────────────────────────────────────────────────────────────
+  const handleTestSend = async () => {
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      await sendTestNotification();
+      setTestResult('sent');
+    } catch {
+      setTestResult('error');
+    } finally {
+      setTestSending(false);
     }
   };
 
@@ -492,7 +545,71 @@ export default function MoreTab({ onReset }: MoreTabProps) {
         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>›</span>
       </button>
 
-      {/* ── 4. 데이터 초기화 ─────────────────────────────────── */}
+      {/* ── 4. LINE 알림 ─────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <button
+          className="w-full flex items-center justify-between px-4 py-4"
+          onClick={() => toggleSection('notification')}
+        >
+          <div className="flex items-center gap-3">
+            <span>🔔</span>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                LINE 알림
+              </span>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                {notifEnabled ? '켜짐' : '꺼짐'}
+              </span>
+            </div>
+          </div>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {openSection === 'notification' ? '∧' : '∨'}
+          </span>
+        </button>
+
+        {openSection === 'notification' && (
+          <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
+
+            {/* ON/OFF 토글 행 */}
+            <div className="pt-3 flex items-center justify-between">
+              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                거래 등록 시 LINE 알림
+              </span>
+              <button
+                onClick={handleNotifToggle}
+                disabled={notifLoading}
+                className="relative w-12 h-6 rounded-full transition-colors duration-200 disabled:opacity-50"
+                style={{ backgroundColor: notifEnabled ? 'var(--accent)' : 'var(--border)' }}
+                aria-label={notifEnabled ? '알림 끄기' : '알림 켜기'}
+              >
+                <span
+                  className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
+                  style={{ transform: notifEnabled ? 'translateX(26px)' : 'translateX(2px)' }}
+                />
+              </button>
+            </div>
+
+            {/* 테스트 발송 버튼 */}
+            <button
+              onClick={handleTestSend}
+              disabled={testSending || !notifEnabled}
+              className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+              style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+            >
+              {testSending ? '발송 중...' : '테스트 메시지 발송'}
+            </button>
+
+            {testResult === 'sent'  && (
+              <p className="text-xs text-center" style={{ color: 'var(--income)' }}>발송되었습니다 ✓</p>
+            )}
+            {testResult === 'error' && (
+              <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>발송에 실패했습니다</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── 5. 데이터 초기화 ─────────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
         <button
           className="w-full flex items-center justify-between px-4 py-4"

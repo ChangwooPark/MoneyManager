@@ -85,3 +85,20 @@ export function addCategory(type: 'income' | 'expense', name: string): Promise<C
 export function deleteCategory(id: string): Promise<void> {
   return request<void>(`/categories/${id}`, { method: 'DELETE' });
 }
+
+// ─── Notifications ───────────────────────────────────────────
+
+export function getNotificationSettings(): Promise<{ enabled: boolean }> {
+  return request<{ enabled: boolean }>('/notifications/settings');
+}
+
+export function updateNotificationSettings(enabled: boolean): Promise<{ enabled: boolean }> {
+  return request<{ enabled: boolean }>('/notifications/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export function sendTestNotification(): Promise<{ sent: boolean }> {
+  return request<{ sent: boolean }>('/notifications/test', { method: 'POST' });
+}

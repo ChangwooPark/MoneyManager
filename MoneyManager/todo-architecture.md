@@ -395,29 +395,22 @@ Firestore (데이터베이스)
 - E2E: 400 → 422/422 passing (`stats-tab.spec.ts` 22개 신규)
 - [ ] 공부용 Documents 파일 작성
 
-### Phase 17: 알림 기능 (LINE / 카카오톡 연동)
-- [ ] **더보기 탭 — 알림 어카운트 등록 메뉴 추가**
-  - LINE 또는 카카오톡 어카운트를 최대 5개까지 등록 가능
-  - 등록 정보: 플랫폼(LINE/카카오톡), 어카운트 식별자(토큰 또는 ID)
-  - Firestore `notification_accounts` 컬렉션에 저장
-  - 백엔드 API(`GET/POST/DELETE /notification-accounts`) 추가 필요
-- [ ] **거래 저장 시 알림 발송**
-  - `POST /transactions` 처리 완료 후 등록된 어카운트로 알림 메시지 전송
-  - LINE: LINE Notify 또는 LINE Messaging API 사용
-  - 카카오톡: 카카오 알림톡 또는 카카오 오픈채팅 Bot API 사용
-  - 알림 메시지 내용 예시:
-    ```
-    [가계부 알림]
-    💰 수입 +¥250,000 (급여)
-    2026-06-18 등록
-    ```
-- [ ] **알림 발송 실패 처리**
-  - 알림 발송 실패 시 거래 저장 자체는 정상 완료 (알림은 부가 기능)
-  - 실패 로그는 백엔드에서 기록
+### Phase 17: 알림 기능 (LINE Messaging API) ✅ 완료
+- [x] **더보기 탭 — LINE 알림 ON/OFF 토글 + 테스트 발송 섹션 추가**
+  - LINE Messaging API 사용 (단일 사용자, 서버 환경변수로 관리)
+  - GCP Secret Manager: `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_USER_ID` 등록 완료
+  - Firestore `settings/notification_settings` 문서에 `{ enabled: boolean }` 저장
+  - 더보기 탭 아코디언 섹션: 토글 ON/OFF + "테스트 메시지 발송" 버튼
+- [x] **거래 저장 시 알림 발송**
+  - `POST /transactions` 성공 후 fire-and-forget 방식으로 알림 발송
+  - 알림이 꺼져 있거나 환경변수 미설정 시 조용히 스킵
+  - 알림 메시지 포맷: `[가계부 알림]\n💸 지출 -¥3,000 (식비)\n2026-06-22 등록\n메모: ...`
+- [x] **알림 발송 실패 처리**
+  - 발송 실패 시 거래 저장은 정상 완료 (알림은 부가 기능)
+  - 실패 로그: `console.error('[LINE] 알림 발송 실패:', err)`
 
 **완료 체크리스트**
-- [ ] E2E 테스트 코드 작성
-- [ ] E2E 테스트 전체 통과
+- E2E: 422 → 446/446 passing (`notification.spec.ts` 24개 신규)
 - [ ] 공부용 Documents 파일 작성
 
 ---
