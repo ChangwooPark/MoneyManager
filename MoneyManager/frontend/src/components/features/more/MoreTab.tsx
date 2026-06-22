@@ -578,7 +578,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
               <button
                 onClick={handleNotifToggle}
                 disabled={notifLoading}
-                className="relative w-12 h-6 rounded-full transition-colors duration-200 disabled:opacity-50"
+                className="relative w-12 h-6 rounded-full overflow-hidden transition-colors duration-200 disabled:opacity-50"
                 style={{ backgroundColor: notifEnabled ? 'var(--accent)' : 'var(--border)' }}
                 aria-label={notifEnabled ? '알림 끄기' : '알림 켜기'}
               >
