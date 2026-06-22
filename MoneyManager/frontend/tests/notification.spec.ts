@@ -11,7 +11,13 @@ import { test, expect, Page } from '@playwright/test';
 
 // ─── 공통 모의 설정 ──────────────────────────────────────────
 
-async function goToMoreTab(page: Page, notifEnabled = true): Promise<void> {
+const DEFAULT_USERS = [{ id: 'U1234567890abcdef', display: 'U1234567...' }];
+
+async function goToMoreTab(
+  page: Page,
+  notifEnabled = true,
+  lineUsers: { id: string; display: string }[] = DEFAULT_USERS,
+): Promise<void> {
   // PIN 인증 모킹
   await page.route('**/settings/pin/verify', route =>
     route.fulfill({ json: { success: true } })
@@ -32,6 +38,14 @@ async function goToMoreTab(page: Page, notifEnabled = true): Promise<void> {
   await page.route('**/notifications/settings', route => {
     if (route.request().method() === 'GET') {
       route.fulfill({ json: { enabled: notifEnabled } });
+    } else {
+      route.fallback();
+    }
+  });
+  // 수신자 목록 조회
+  await page.route('**/notifications/line-users', route => {
+    if (route.request().method() === 'GET') {
+      route.fulfill({ json: { users: lineUsers } });
     } else {
       route.fallback();
     }
@@ -189,5 +203,46 @@ test.describe('LINE 알림 — 테스트 메시지 발송', () => {
     // 섹션 다시 열기 — 결과 메시지 없음
     await header.click();
     await expect(page.getByText('발송되었습니다 ✓')).not.toBeVisible();
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 4. 수신자 목록 관리 (Phase 18-5)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+test.describe('LINE 알림 — 수신자 목록', () => {
+  test('섹션 열기 시 등록된 수신자 User ID가 표시된다', async ({ page }) => {
+    await goToMoreTab(page);
+    await page.getByRole('button', { name: /🔔 LINE 알림/ }).click();
+    await expect(page.getByText('수신자 (1명)')).toBeVisible();
+    await expect(page.getByText('U1234567...')).toBeVisible();
+  });
+
+  test('수신자가 없을 때 안내 문구가 표시된다', async ({ page }) => {
+    await goToMoreTab(page, true, []); // 수신자 빈 배열로 초기화
+    await page.getByRole('button', { name: /🔔 LINE 알림/ }).click();
+    await expect(page.getByText('등록된 수신자가 없습니다')).toBeVisible();
+  });
+
+  test('수신자 삭제 버튼 클릭 시 목록에서 제거된다', async ({ page }) => {
+    await page.route('**/notifications/line-users/**', route => {
+      if (route.request().method() === 'DELETE') {
+        route.fulfill({ json: { users: [] } });
+      } else {
+        route.fallback();
+      }
+    });
+
+    await goToMoreTab(page);
+    await page.getByRole('button', { name: /🔔 LINE 알림/ }).click();
+    await expect(page.getByText('U1234567...')).toBeVisible();
+    await page.getByRole('button', { name: '삭제' }).click();
+    await expect(page.getByText('U1234567...')).not.toBeVisible();
+    await expect(page.getByText('등록된 수신자가 없습니다')).toBeVisible();
+  });
+
+  test('파트너 추가 안내 문구가 표시된다', async ({ page }) => {
+    await goToMoreTab(page);
+    await page.getByRole('button', { name: /🔔 LINE 알림/ }).click();
+    await expect(page.getByText(/파트너 추가/)).toBeVisible();
   });
 });

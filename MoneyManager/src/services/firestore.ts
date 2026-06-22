@@ -111,6 +111,41 @@ export async function setNotificationEnabled(enabled: boolean): Promise<void> {
   await db.collection('settings').doc(NOTIFICATION_DOC).set({ enabled }, { merge: true });
 }
 
+// 알림 수신자 User ID 목록 조회
+// - Firestore에 저장된 배열이 없으면 환경변수 LINE_USER_ID 로 초기 시드
+export async function getNotificationUserIds(): Promise<string[]> {
+  const doc = await db.collection('settings').doc(NOTIFICATION_DOC).get();
+  const data = doc.data() as { userIds?: string[] } | undefined;
+
+  if (data?.userIds && data.userIds.length > 0) return data.userIds;
+
+  // 첫 호출 시 환경변수에서 마이그레이션
+  const envId = process.env.LINE_USER_ID;
+  if (envId) {
+    await db.collection('settings').doc(NOTIFICATION_DOC).set({ userIds: [envId] }, { merge: true });
+    return [envId];
+  }
+
+  return [];
+}
+
+// 수신자 User ID 추가 (중복 무시)
+export async function addNotificationUserId(userId: string): Promise<string[]> {
+  const current = await getNotificationUserIds();
+  if (current.includes(userId)) return current;
+  const updated = [...current, userId];
+  await db.collection('settings').doc(NOTIFICATION_DOC).set({ userIds: updated }, { merge: true });
+  return updated;
+}
+
+// 수신자 User ID 삭제
+export async function removeNotificationUserId(userId: string): Promise<string[]> {
+  const current = await getNotificationUserIds();
+  const updated = current.filter(id => id !== userId);
+  await db.collection('settings').doc(NOTIFICATION_DOC).set({ userIds: updated }, { merge: true });
+  return updated;
+}
+
 // ─────────────────────────────────────────────────────────────
 
 export interface Transaction {

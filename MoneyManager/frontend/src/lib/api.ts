@@ -99,6 +99,14 @@ export function updateNotificationSettings(enabled: boolean): Promise<{ enabled:
   });
 }
 
-export function sendTestNotification(): Promise<{ sent: boolean }> {
-  return request<{ sent: boolean }>('/notifications/test', { method: 'POST' });
+export function sendTestNotification(): Promise<{ sent: boolean; recipients?: number }> {
+  return request<{ sent: boolean; recipients?: number }>('/notifications/test', { method: 'POST' });
+}
+
+export function getLineUsers(): Promise<{ users: { id: string; display: string }[] }> {
+  return request<{ users: { id: string; display: string }[] }>('/notifications/line-users');
+}
+
+export function deleteLineUser(id: string): Promise<{ users: string[] }> {
+  return request<{ users: string[] }>(`/notifications/line-users/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

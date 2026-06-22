@@ -7,6 +7,7 @@ import {
   deleteTransaction,
   deleteAllTransactions,
   getNotificationEnabled,
+  getNotificationUserIds,
   Transaction,
 } from '../services/firestore';
 import { sendLineNotification, buildTransactionMessage } from '../services/line';
@@ -42,10 +43,10 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json(created);
 
   // 알림 발송 — fire-and-forget (실패해도 거래 저장에는 영향 없음)
-  getNotificationEnabled()
-    .then(enabled => {
-      if (!enabled) return;
-      return sendLineNotification(buildTransactionMessage(created));
+  Promise.all([getNotificationEnabled(), getNotificationUserIds()])
+    .then(([enabled, userIds]) => {
+      if (!enabled || userIds.length === 0) return;
+      return sendLineNotification(buildTransactionMessage(created), userIds);
     })
     .catch(err => console.error('[LINE] 알림 발송 실패:', err));
 });

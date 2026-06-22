@@ -5,6 +5,7 @@ import {
   changePin, getBudget, setBudget, getCategories, addCategory, deleteCategory,
   verifyPin, deleteAllTransactions,
   getNotificationSettings, updateNotificationSettings, sendTestNotification,
+  getLineUsers, deleteLineUser,
 } from '@/lib/api';
 import { Category } from '@/types';
 
@@ -84,6 +85,8 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   const [notifLoading,  setNotifLoading]  = useState(false);
   const [testSending,   setTestSending]   = useState(false);
   const [testResult,    setTestResult]    = useState<'sent' | 'error' | null>(null);
+  const [lineUsers,     setLineUsers]     = useState<{ id: string; display: string }[]>([]);
+  const [usersLoading,  setUsersLoading]  = useState(false);
 
   // ─────────────────────────────────────────────────────────────
   // 카테고리 관리 상태
@@ -121,11 +124,14 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       .catch(() => setCurrentBudget(null));
   }, [yearMonth]);
 
-  // ── LINE 알림 설정 조회 (마운트 시 1회) ───────────────────────
+  // ── LINE 알림 설정 + 수신자 목록 조회 (마운트 시 1회) ─────────
   useEffect(() => {
     getNotificationSettings()
       .then(s => setNotifEnabled(s.enabled))
-      .catch(() => {}); // 오류 시 기본값(true) 유지
+      .catch(() => {});
+    getLineUsers()
+      .then(r => setLineUsers(r.users))
+      .catch(() => {});
   }, []);
 
   // ── 카테고리 목록 조회 ────────────────────────────────────────
@@ -249,6 +255,21 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       // 오류 시 현재 상태 유지
     } finally {
       setNotifLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // LINE 수신자 삭제
+  // ─────────────────────────────────────────────────────────────
+  const handleDeleteLineUser = async (id: string) => {
+    setUsersLoading(true);
+    try {
+      await deleteLineUser(id);
+      setLineUsers(prev => prev.filter(u => u.id !== id));
+    } catch {
+      // 오류 시 현재 상태 유지
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -570,8 +591,39 @@ export default function MoreTab({ onReset }: MoreTabProps) {
         {openSection === 'notification' && (
           <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
 
+            {/* 수신자 목록 */}
+            <div className="pt-3 flex flex-col gap-1">
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                수신자 ({lineUsers.length}명)
+              </p>
+              {lineUsers.length === 0 ? (
+                <p className="text-xs py-2" style={{ color: 'var(--text-secondary)' }}>
+                  등록된 수신자가 없습니다
+                </p>
+              ) : (
+                lineUsers.map(user => (
+                  <div key={user.id} className="flex items-center justify-between py-1">
+                    <span className="text-xs font-mono" style={{ color: 'var(--text-primary)' }}>
+                      {user.display}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteLineUser(user.id)}
+                      disabled={usersLoading}
+                      className="text-xs px-2 py-0.5 rounded border disabled:opacity-50"
+                      style={{ color: 'var(--expense)', borderColor: 'var(--expense)' }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))
+              )}
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                파트너 추가: 봇 친구 추가 후 아무 메시지 전송 시 자동 등록
+              </p>
+            </div>
+
             {/* ON/OFF 토글 행 */}
-            <div className="pt-3 flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                 거래 등록 시 LINE 알림
               </span>
