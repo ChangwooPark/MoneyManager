@@ -415,6 +415,53 @@ Firestore (데이터베이스)
 
 ---
 
+### Phase 18: UI/UX 개선 — 다국어·모달·거래 상세 연동
+
+#### 18-1. 다국어 지원 (한국어 ↔ 일본어)
+- [ ] **더보기 탭 — 언어 전환 메뉴 추가**
+  - 선택지: 한국어 / 日本語 (기본값: 한국어)
+  - 설정값은 Firestore `settings/app_settings` 문서의 `language` 필드에 저장
+  - 백엔드 API: 기존 `GET/PUT /settings` 확장 또는 별도 `GET/PUT /settings/language`
+- [ ] **앱 전체 번역 적용**
+  - React Context(`LanguageContext`)로 언어 상태를 앱 전체에 공유
+  - 번역 맵을 별도 파일(`src/i18n/translations.ts`)로 관리
+  - 대상: 탭 이름, 버튼 레이블, 입력 placeholder, 에러 메시지, 카테고리 기본값 등
+  - 숫자/금액 포맷은 언어와 무관하게 `¥` 유지
+
+#### 18-2. 바텀시트 최소 높이 통일 (화면의 2/3)
+- [ ] **콘텐츠가 적어도 시트가 화면 하단에만 작게 뜨지 않도록 수정**
+  - 현재: `maxHeight: '65vh'` 만 있고 `minHeight` 없음
+  - 개선: `minHeight: '66.666vh'` 추가
+  - 대상 컴포넌트:
+    - `TransactionForm` (FAB 거래 입력 폼)
+    - `CalendarTab` 날짜 상세 시트
+    - `HomeTab` 거래 상세 시트
+    - `StatsTab` 카테고리 상세 시트
+
+#### 18-3. 달력·통계 화면에서 거래 클릭 → 홈 탭과 동일한 상세/수정 시트
+- [ ] **CalendarTab — 날짜 시트 내 거래 항목 클릭 시 상세 시트 열기**
+  - 현재: 날짜 시트 안의 거래 목록은 클릭해도 반응 없음
+  - 개선: 거래 항목 클릭 → 홈 탭의 거래 상세 시트(수정·삭제 포함)와 동일한 UI 표시
+- [ ] **StatsTab — 카테고리 시트 내 거래 항목 클릭 시 상세 시트 열기**
+  - 동일하게 클릭 → 상세 시트
+- [ ] **공통 거래 상세 시트 컴포넌트 분리**
+  - 현재 `HomeTab.tsx`에 인라인으로 구현된 상세 시트를
+    `TransactionDetailSheet.tsx` 컴포넌트로 추출하여 세 곳에서 재사용
+  - Props: `transaction`, `onClose`, `onEdit`, `onDelete`
+
+#### 18-4. LINE 알림 토글 버튼 UI 수정
+- [ ] **토글 썸(동그라미)이 버튼 안에서 좌우로 이동하도록 수정**
+  - 현재 문제: `overflow-hidden` 적용에도 불구하고 썸 위치가 부자연스러움
+  - 원인: `<button>` 기본 padding이 절대 좌표 기준에 영향을 줌
+  - 개선: `p-0` 추가 + 썸에 `left-0.5` 명시 + `translateX` 값 재계산
+
+**완료 체크리스트**
+- [ ] E2E 테스트 코드 작성
+- [ ] E2E 테스트 전체 통과
+- [ ] 공부용 Documents 파일 작성
+
+---
+
 ## 서비스 URL 및 GCP 정보
 
 | 항목 | 값 |

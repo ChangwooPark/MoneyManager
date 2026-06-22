@@ -578,13 +578,15 @@ export default function MoreTab({ onReset }: MoreTabProps) {
               <button
                 onClick={handleNotifToggle}
                 disabled={notifLoading}
-                className="relative w-12 h-6 rounded-full overflow-hidden transition-colors duration-200 disabled:opacity-50"
+                className="relative shrink-0 w-12 h-6 p-0 rounded-full transition-colors duration-200 disabled:opacity-50"
                 style={{ backgroundColor: notifEnabled ? 'var(--accent)' : 'var(--border)' }}
                 aria-label={notifEnabled ? '알림 끄기' : '알림 켜기'}
               >
+                {/* p-0 필수 — <button> 기본 padding이 absolute 기준점에 영향을 줌 */}
+                {/* left-0.5(2px) 명시 + ON 시 translateX(24px) → 우측 끝 2+20+24=46px (48px 이내) */}
                 <span
-                  className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
-                  style={{ transform: notifEnabled ? 'translateX(26px)' : 'translateX(2px)' }}
+                  className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200"
+                  style={{ transform: notifEnabled ? 'translateX(24px)' : 'translateX(0)' }}
                 />
               </button>
             </div>
