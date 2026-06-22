@@ -8,3 +8,6 @@ dist/
 # Playwright MCP 세션 로그 (자동 생성, 커밋 불필요)
 .playwright-mcp/
 commands/
+
+# Playwright 테스트 결과물 (스크린샷, 트레이스 등)
+test-results/
