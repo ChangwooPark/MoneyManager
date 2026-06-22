@@ -393,7 +393,7 @@ Firestore (데이터베이스)
 
 **완료 체크리스트**
 - E2E: 400 → 422/422 passing (`stats-tab.spec.ts` 22개 신규)
-- [ ] 공부용 Documents 파일 작성
+- [x] 공부용 Documents 파일 작성 (`Documents/25-phase16-stats-category.md`)
 
 ### Phase 17: 알림 기능 (LINE Messaging API) ✅ 완료
 - [x] **더보기 탭 — LINE 알림 ON/OFF 토글 + 테스트 발송 섹션 추가**
@@ -411,7 +411,7 @@ Firestore (데이터베이스)
 
 **완료 체크리스트**
 - E2E: 422 → 446/446 passing (`notification.spec.ts` 24개 신규)
-- [ ] 공부용 Documents 파일 작성
+- [x] 공부용 Documents 파일 작성 (`Documents/26-phase17-line-notification.md`)
 
 ---
 
