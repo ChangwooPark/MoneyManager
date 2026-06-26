@@ -449,19 +449,19 @@ Firestore (데이터베이스)
     `TransactionDetailSheet.tsx` 컴포넌트로 추출하여 세 곳에서 재사용
   - Props: `transaction`, `onClose`, `onEdit`, `onDelete`
 
-#### 18-4. LINE 알림 토글 버튼 UI 수정
-- [ ] **토글 썸(동그라미)이 버튼 안에서 좌우로 이동하도록 수정**
+#### 18-4. LINE 알림 토글 버튼 UI 수정 ✅ 완료
+- [x] **토글 썸(동그라미)이 버튼 안에서 좌우로 이동하도록 수정**
   - 현재 문제: `overflow-hidden` 적용에도 불구하고 썸 위치가 부자연스러움
   - 원인: `<button>` 기본 padding이 절대 좌표 기준에 영향을 줌
   - 개선: `p-0` 추가 + 썸에 `left-0.5` 명시 + `translateX` 값 재계산
 
-#### 18-5. LINE 알림 다중 수신자 (커플 공동 수신)
-- [ ] **현황 및 목표**
+#### 18-5. LINE 알림 다중 수신자 (커플 공동 수신) ✅ 완료
+- [x] **현황 및 목표**
   - 현재: `LINE_USER_ID` 환경변수 1개 → 1인만 수신
   - 목표: 커플 2인 동시 수신 → LINE Multicast API(`/multicast`) 활용
   - User ID 저장 위치를 환경변수 → Firestore 배열로 마이그레이션
 
-- [ ] **파트너 User ID 획득 방법 — Webhook 자동 등록**
+- [x] **파트너 User ID 획득 방법 — Webhook 자동 등록**
   - LINE User ID는 LINE 앱에서 직접 볼 수 없음 (API Webhook으로만 취득 가능)
   - 흐름:
     1. LINE Developers 콘솔에서 `Channel Secret` 확인 → Secret Manager 등록
@@ -470,18 +470,18 @@ Firestore (데이터베이스)
     4. Webhook이 파트너의 `source.userId`를 Firestore에 자동 저장
     5. 이후 거래 등록 시 두 사람 모두에게 알림 발송
 
-- [ ] **백엔드 변경**
+- [x] **백엔드 변경**
   - `firestore.ts`: `getNotificationUserIds()` / `addNotificationUserId(id)` / `removeNotificationUserId(id)` 추가
   - `line.ts`: 1명이면 `/push`, 2명 이상이면 `/multicast` 자동 선택
   - `notifications.ts`: `POST /notifications/line-webhook` 엔드포인트 추가 (Channel Secret 서명 검증 포함)
   - `LINE_CHANNEL_SECRET` Secret Manager 등록 필요
 
-- [ ] **프론트엔드 변경**
+- [x] **프론트엔드 변경**
   - 더보기 → LINE 알림 섹션에 "수신자 목록" 표시 (User ID 앞 8자 + `...` 마스킹)
   - "내 ID 등록" 버튼 → 봇에게 메시지를 보내도록 안내 (Webhook으로 자동 등록됨)
   - 수신자 삭제 버튼
 
-- [ ] **사용자가 수동으로 해야 할 작업**
+- [x] **사용자가 수동으로 해야 할 작업**
   1. LINE Developers 콘솔 → 채널 → Basic settings → `Channel secret` 복사
   2. `gcloud secrets create LINE_CHANNEL_SECRET --data-file=-` 로 등록
   3. Cloud Run 서비스에 시크릿 연결 (`--set-secrets` 업데이트)
