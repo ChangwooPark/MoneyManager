@@ -2,30 +2,43 @@
 
 TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 
-## 백엔드 문서 (Express + Cloud Run)
+- **[KR/](./KR/)** — 한국어 학습 자료
+- **[JP/](./JP/)** — 日本語学習資料
+
+---
+
+## 문서 목록
 
 | 파일 | 내용 |
 |------|------|
-| [01-architecture.md](./01-architecture.md) | 전체 시스템 구조, 기술 스택, API 목록 |
-| [02-local-development.md](./02-local-development.md) | 로컬 개발 환경 구성, 파일 구조, 주요 코드 설명 |
-| [03-docker.md](./03-docker.md) | Docker 개념, Dockerfile 설명, 멀티스테이지 빌드 |
-| [04-gcp-infrastructure.md](./04-gcp-infrastructure.md) | Firestore, Artifact Registry 구성, GCP 무료 티어 |
-| [05-cloud-run-deployment.md](./05-cloud-run-deployment.md) | Cloud Run 배포 방법, 비용 제어, 서버리스 개념 |
-| [06-iam-security.md](./06-iam-security.md) | IAM 권한, Service Account, 보안 설정 |
-| [07-github-actions.md](./07-github-actions.md) | 자동 배포 CI/CD, 워크플로우 파일 설명 |
-| [08-development-workflow.md](./08-development-workflow.md) | 일상적인 개발 흐름, API 사용 예시, 유용한 명령어 |
+| [01-architecture](./KR/01-architecture.md) | 전체 시스템 구조, 기술 스택, API 목록 |
+| [02-local-development](./KR/02-local-development.md) | 로컬 개발 환경 구성, 파일 구조, 주요 코드 설명 |
+| [03-docker](./KR/03-docker.md) | Docker 개념, Dockerfile 설명, 멀티스테이지 빌드 |
+| [04-gcp-infrastructure](./KR/04-gcp-infrastructure.md) | Firestore, Artifact Registry 구성, GCP 무료 티어 |
+| [05-cloud-run-deployment](./KR/05-cloud-run-deployment.md) | Cloud Run 배포 방법, 비용 제어, 서버리스 개념 |
+| [06-iam-security](./KR/06-iam-security.md) | IAM 권한, Service Account, 보안 설정 |
+| [07-github-actions](./KR/07-github-actions.md) | 자동 배포 CI/CD, 워크플로우 파일 설명 |
+| [08-development-workflow](./KR/08-development-workflow.md) | 일상적인 개발 흐름, API 사용 예시, 유용한 명령어 |
+| [09-phase6-frontend-setup](./KR/09-phase6-frontend-setup.md) | Next.js 초기 설정, API 클라이언트, CORS |
+| [10-phase7-pin-auth](./KR/10-phase7-pin-auth.md) | PIN 인증 화면, AppShell 세션 관리, sessionStorage |
+| [11-phase8-layout-navigation](./KR/11-phase8-layout-navigation.md) | 공통 레이아웃, 하단 탭바, 연월 선택기 |
+| [12-vercel-deployment](./KR/12-vercel-deployment.md) | Vercel 개념, 배포 과정, CORS 설정, CDN |
+| [13-phase9-transaction-form](./KR/13-phase9-transaction-form.md) | FAB 버튼, 바텀 시트 입력 폼, 수입/지출 토글 |
+| [14-cicd-vercel-github-actions](./KR/14-cicd-vercel-github-actions.md) | Vercel 자동 배포, GitHub Actions Vercel job |
+| [15-debug-env-var-empty](./KR/15-debug-env-var-empty.md) | 트러블슈팅: 프로덕션 PIN 인증 실패 디버깅 |
+| [16-phase10-home-tab](./KR/16-phase10-home-tab.md) | 홈 화면 구현, 날짜별 그룹화, 예산 대시보드 |
+| [17-phase11-calendar-tab](./KR/17-phase11-calendar-tab.md) | 달력 화면, 월간 그리드, 날짜 클릭 바텀시트 |
+| [18-bash-commands-guide](./KR/18-bash-commands-guide.md) | Bash 명령어 정리 (GCP, Docker, Git, npm 등) |
+| [19-phase12-stats-tab](./KR/19-phase12-stats-tab.md) | 통계 화면, 카테고리별 집계, 정렬 기능 |
+| [20-phase13-more-tab](./KR/20-phase13-more-tab.md) | 더보기 화면, PIN 변경, 예산 설정, 카테고리 관리 |
+| [21-phase13-5-ux-improvements](./KR/21-phase13-5-ux-improvements.md) | 즉시 적용된 UX 개선 사항 |
+| [22-phase14-1-common-ux](./KR/22-phase14-1-common-ux.md) | 공통 UX 개선 (FAB 너비, 스크롤 고정, 바텀시트) |
+| [23-phase14-2-more-tab](./KR/23-phase14-2-more-tab.md) | 아코디언 단일 열림, 데이터 초기화 기능 |
+| [24-phase14-3-home-tab](./KR/24-phase14-3-home-tab.md) | 홈 탭 보강 (구분선, 순수익, 메모, 거래 상세) |
+| [25-phase16-stats-category](./KR/25-phase16-stats-category.md) | 통계 탭 카테고리 클릭 → 거래 상세 바텀시트 |
+| [26-phase17-line-notification](./KR/26-phase17-line-notification.md) | LINE Messaging API 알림, Webhook, Multicast |
 
-## 프론트엔드 문서 (Next.js)
-
-| 파일 | 내용 |
-|------|------|
-| [09-phase6-frontend-setup.md](./09-phase6-frontend-setup.md) | 아키텍처 결정(역할 분리), Next.js 초기 설정, API 클라이언트, CORS |
-| [10-phase7-pin-auth.md](./10-phase7-pin-auth.md) | PIN 인증 화면, AppShell 세션 관리, sessionStorage, 'use client' 개념 |
-| [11-phase8-layout-navigation.md](./11-phase8-layout-navigation.md) | 공통 레이아웃, 하단 탭바, 연월 선택기, 상태 끌어올리기, Props 개념 |
-| [12-vercel-deployment.md](./12-vercel-deployment.md) | Vercel 개념, 배포 과정, CORS 설정, CDN, 자동 배포 흐름 |
-| [13-phase9-transaction-form.md](./13-phase9-transaction-form.md) | FAB 버튼, 바텀 시트 입력 폼, 수입/지출 토글, Firestore 저장 흐름 |
-| [14-cicd-vercel-github-actions.md](./14-cicd-vercel-github-actions.md) | Vercel 자동 배포 문제 원인, 토큰 발급, GitHub Actions에 Vercel job 추가 |
-| [15-debug-env-var-empty.md](./15-debug-env-var-empty.md) | 트러블슈팅: 프로덕션 PIN 인증 실패 — 암호화 환경변수 빈 값 문제, curl 분석, ?? vs \|\| |
+---
 
 ## 빠른 참조
 
@@ -50,8 +63,6 @@ npm run dev
 
 **배포 방법**
 ```bash
-git add .
-git commit -m "변경 내용"
 git push origin main
 # → GitHub Actions가 자동으로 배포
 ```
