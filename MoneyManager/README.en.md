@@ -87,10 +87,46 @@ git push origin main
 
 ## LINE Notification Setup
 
-Set the Webhook URL in LINE Developers Console to enable partner auto-registration.
+When a transaction is saved, both you and your partner receive a LINE notification simultaneously.
 
-```
-https://{BACKEND_URL}/notifications/line-webhook
-```
+### Initial Setup (admin, one-time)
 
-Once the partner adds the bot as a friend and sends any message, their User ID is automatically registered and a confirmation is sent back.
+**① Enable Webhook in LINE Developers Console**
+
+https://developers.line.biz → Channel → **Messaging API** tab
+
+| Field | Value |
+|-------|-------|
+| Webhook URL | `https://money-manager-1094294666571.asia-northeast3.run.app/notifications/line-webhook` |
+| Use webhook | **ON** |
+
+Enter the URL and click **Verify** → confirm `"Success"`
+
+**② Disable auto-reply in LINE Official Account Manager**
+
+https://manager.line.biz → Channel → **Response settings**
+
+| Field | Value |
+|-------|-------|
+| Response mode | **Bot** |
+| Auto-reply messages | **OFF** |
+
+> If auto-reply is not disabled, LINE's default message (`このアカウントでは個別のお問い合わせ...`) is sent instead of the Webhook response, and partner registration will not work.
+
+---
+
+### Adding a Partner (partner does this themselves)
+
+No LINE developer account is needed — just a regular LINE app.
+
+1. Share the bot's **QR code** or **bot ID (starting with @)** from LINE Developers Console → Messaging API tab
+2. Partner **adds the bot as a friend** in the LINE app
+3. Partner **sends any message** to the bot (e.g. "register me")
+4. Bot automatically replies:
+   ```
+   ✅ You have been registered as a notification recipient!
+   User ID: Uxxxxxxxxxxxxxxxxx
+   ```
+5. In the app → **More** → **LINE Alerts** section, confirm 2 recipients are listed
+
+After registration, both users receive a notification every time a transaction is saved.

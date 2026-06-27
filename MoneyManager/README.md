@@ -87,10 +87,46 @@ git push origin main
 
 ## LINE 알림 설정
 
-파트너 추가 시 LINE Developers 콘솔에서 Webhook URL을 아래와 같이 설정합니다.
+거래 등록 시 본인 및 파트너에게 동시에 LINE 알림을 발송합니다.
 
-```
-https://{BACKEND_URL}/notifications/line-webhook
-```
+### 초기 설정 (관리자 1회)
 
-파트너가 봇을 친구 추가 후 아무 메시지를 전송하면 자동으로 수신자 등록 및 User ID가 회신됩니다.
+**① LINE Developers 콘솔에서 Webhook 활성화**
+
+https://developers.line.biz → 채널 → **Messaging API** 탭
+
+| 항목 | 값 |
+|------|----|
+| Webhook URL | `https://money-manager-1094294666571.asia-northeast3.run.app/notifications/line-webhook` |
+| Use webhook | **ON** |
+
+URL 입력 후 **Verify** 버튼 클릭 → `"Success"` 확인
+
+**② LINE Official Account Manager에서 자동응답 끄기**
+
+https://manager.line.biz → 해당 채널 → **응답 설정**
+
+| 항목 | 값 |
+|------|----|
+| 응답 모드 | **Bot** |
+| 자동응답 메시지 | **OFF** |
+
+> 자동응답을 끄지 않으면 Webhook 대신 LINE 기본 메시지(`このアカウントでは個別のお問い合わせ...`)가 발송되어 파트너 등록이 동작하지 않습니다.
+
+---
+
+### 파트너 추가 방법 (파트너 본인이 직접)
+
+파트너는 LINE 개발자 계정 없이 일반 LINE 앱만으로 등록 가능합니다.
+
+1. LINE Developers 콘솔 → Messaging API 탭 → **QR 코드** 또는 **봇 ID(@로 시작)** 를 파트너에게 공유
+2. 파트너가 LINE 앱으로 봇을 **친구 추가**
+3. 파트너가 봇에게 **아무 메시지나 전송** (예: "등록해줘")
+4. 봇이 자동으로 회신:
+   ```
+   ✅ 알림 수신자로 등록되었습니다!
+   User ID: Uxxxxxxxxxxxxxxxxx
+   ```
+5. 앱 → **더보기** → **LINE 알림** 섹션에서 수신자 2명 확인
+
+등록 이후 거래 내역이 저장될 때마다 두 사람 모두에게 알림이 발송됩니다.
