@@ -37,6 +37,7 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | [24-phase14-3-home-tab](./KR/24-phase14-3-home-tab.md) | 홈 탭 보강 (구분선, 순수익, 메모, 거래 상세) |
 | [25-phase16-stats-category](./KR/25-phase16-stats-category.md) | 통계 탭 카테고리 클릭 → 거래 상세 바텀시트 |
 | [26-phase17-line-notification](./KR/26-phase17-line-notification.md) | LINE Messaging API 알림, Webhook, Multicast |
+| [27-line-partner-setup](./KR/27-line-partner-setup.md) | LINE 파트너 추가 설정 가이드 (Webhook, 자동응답 OFF, 등록 절차) |
 
 ---
 

@@ -89,44 +89,6 @@ git push origin main
 
 取引を保存すると、本人とパートナーの両方にLINE通知が同時に届きます。
 
-### 初期設定（管理者が1回だけ実施）
+パートナー追加を含む詳細な設定手順は以下のドキュメントを参照してください。
 
-**① LINE DevelopersコンソールでWebhookを有効化**
-
-https://developers.line.biz → チャネル → **Messaging API** タブ
-
-| 項目 | 値 |
-|------|----|
-| Webhook URL | `https://money-manager-1094294666571.asia-northeast3.run.app/notifications/line-webhook` |
-| Webhookの利用 | **ON** |
-
-URLを入力後、**検証**ボタンをクリック → `"成功"` を確認
-
-**② LINE公式アカウントマネージャーで自動応答をオフ**
-
-https://manager.line.biz → 該当チャネル → **応答設定**
-
-| 項目 | 値 |
-|------|----|
-| 応答モード | **Bot** |
-| 自動応答メッセージ | **OFF** |
-
-> 自動応答をオフにしないと、Webhookの代わりにLINEのデフォルトメッセージ（`このアカウントでは個別のお問い合わせ...`）が送信され、パートナー登録が機能しません。
-
----
-
-### パートナーの追加方法（パートナー本人が実施）
-
-LINEの開発者アカウントは不要です。通常のLINEアプリだけで登録できます。
-
-1. LINE Developersコンソール → Messaging APIタブの **QRコード** または **ボットID（@から始まる）** をパートナーに共有
-2. パートナーがLINEアプリでボットを **友だち追加**
-3. パートナーがボットに **任意のメッセージを送信**（例：「登録して」）
-4. ボットが自動で返信：
-   ```
-   ✅ 通知受信者として登録されました！
-   User ID: Uxxxxxxxxxxxxxxxxx
-   ```
-5. アプリ → **その他** → **LINE通知** セクションで受信者が2名になっていることを確認
-
-登録後は取引が保存されるたびに、2人同時に通知が届きます。
+→ [Documents/JP/27-line-partner-setup.md](./Documents/JP/27-line-partner-setup.md)
