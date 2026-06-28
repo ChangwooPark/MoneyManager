@@ -20,8 +20,10 @@ export default defineConfig({
   reporter: [['html', { open: 'never' }]],
 
   use: {
-    // 테스트 대상 URL — page.goto('/') 처럼 상대 경로 사용 가능
-    baseURL: 'http://localhost:3000',
+    // 테스트 대상 URL — PLAYWRIGHT_BASE_URL 환경변수로 외부 서버 지정 가능
+    // 예) PLAYWRIGHT_BASE_URL=https://frontend-dev-changwoo-park.vercel.app npx playwright test
+    // 미설정 시 로컬 개발 서버(localhost:3000) 사용
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
 
     // 테스트 실패 시 스크린샷 자동 저장 (디버깅용)
     screenshot: 'only-on-failure',
@@ -50,7 +52,8 @@ export default defineConfig({
     // },
   ],
 
-  webServer: [
+  // PLAYWRIGHT_BASE_URL이 외부 서버를 가리키면 로컬 서버 불필요 → undefined로 생략
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : [
     {
       // 프론트엔드 Next.js 개발 서버
       command: 'npm run dev',
