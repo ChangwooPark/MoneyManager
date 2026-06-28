@@ -3,11 +3,14 @@
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { getTransactions } from '@/lib/api';
 import { Transaction } from '@/types';
+import TransactionDetailSheet from '../transaction/TransactionDetailSheet';
 
 // ─── Props 타입 정의 ───────────────────────────────────────────
 interface CalendarTabProps {
-  yearMonth: string;  // 상단 연월 선택기에서 전달받은 현재 연월 (예: "2026-06")
-  refreshKey: number; // 거래 저장 완료 시 증가 → 달력 데이터도 자동 갱신
+  yearMonth: string;
+  refreshKey: number;
+  onEdit:    (tx: Transaction) => void;
+  onRefresh: () => void;
 }
 
 // ─── 날짜별 거래 요약 타입 ─────────────────────────────────────
@@ -104,13 +107,16 @@ const DIVIDER = '1px solid var(--border)';
 // - 연월 선택기와 하단 탭바를 제외한 전체 화면을 달력으로 채웁니다.
 // - 주(week) 단위로 행을 나누어 각 행에 동일한 높이를 부여합니다.
 // - 날짜 셀 사이에 수평·수직 구분선을 표시합니다.
-export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps) {
+export default function CalendarTab({ yearMonth, refreshKey, onEdit, onRefresh }: CalendarTabProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
 
-  // 클릭한 날짜 → 바텀시트 표시 제어 (null이면 닫힘)
+  // 클릭한 날짜 → 날짜 시트 표시 (null이면 닫힘)
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // 날짜 시트 안에서 클릭한 거래 → 상세 시트 표시
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
   // ── 바텀시트 드래그로 닫기 상태 ───────────────────────────
   const dragStartY     = useRef<number | null>(null);
@@ -385,6 +391,7 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
               backgroundColor: 'var(--bg-secondary)',
               maxWidth: '28rem',
               margin: '0 auto',
+              minHeight: '66vh',
               maxHeight: '65vh',
               transform: `translateY(${dragOffset}px)`,
               transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
@@ -431,7 +438,11 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
                       {i > 0 && (
                         <div className="mx-4" style={{ height: '1px', backgroundColor: 'var(--border)' }} />
                       )}
-                      <div className="flex items-center justify-between px-4 py-3 gap-3">
+                      {/* 거래 행 — 클릭 시 상세 시트 열림 */}
+                      <div
+                        className="flex items-center justify-between px-4 py-3 gap-3 cursor-pointer active:opacity-60 transition-opacity"
+                        onClick={() => setSelectedTx(tx)}
+                      >
                         <div className="flex items-center gap-2 min-w-0">
                           <span
                             className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium"
@@ -464,6 +475,16 @@ export default function CalendarTab({ yearMonth, refreshKey }: CalendarTabProps)
             </div>
           </div>
         </>
+      )}
+
+      {/* ── 거래 상세 시트 (날짜 시트 위에 표시) ─────────────────── */}
+      {selectedTx && (
+        <TransactionDetailSheet
+          transaction={selectedTx}
+          onClose={() => setSelectedTx(null)}
+          onEdit={onEdit}
+          onDeleted={() => { setSelectedTx(null); setSelectedDate(null); onRefresh(); }}
+        />
       )}
     </div>
   );

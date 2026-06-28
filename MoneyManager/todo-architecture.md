@@ -428,26 +428,18 @@ Firestore (데이터베이스)
   - 대상: 탭 이름, 버튼 레이블, 입력 placeholder, 에러 메시지, 카테고리 기본값 등
   - 숫자/금액 포맷은 언어와 무관하게 `¥` 유지
 
-#### 18-2. 바텀시트 최소 높이 통일 (화면의 2/3)
-- [ ] **콘텐츠가 적어도 시트가 화면 하단에만 작게 뜨지 않도록 수정**
-  - 현재: `maxHeight: '65vh'` 만 있고 `minHeight` 없음
-  - 개선: `minHeight: '66.666vh'` 추가
-  - 대상 컴포넌트:
-    - `TransactionForm` (FAB 거래 입력 폼)
-    - `CalendarTab` 날짜 상세 시트
-    - `HomeTab` 거래 상세 시트
-    - `StatsTab` 카테고리 상세 시트
+#### 18-2. 바텀시트 최소 높이 통일 (화면의 2/3) ✅ 완료
+- [x] **콘텐츠가 적어도 시트가 화면 하단에만 작게 뜨지 않도록 수정**
+  - 개선: `minHeight: '66vh'` 추가
+  - 대상: `TransactionForm`, `CalendarTab` 날짜 시트, `TransactionDetailSheet`, `StatsTab` 카테고리 시트
 
-#### 18-3. 달력·통계 화면에서 거래 클릭 → 홈 탭과 동일한 상세/수정 시트
-- [ ] **CalendarTab — 날짜 시트 내 거래 항목 클릭 시 상세 시트 열기**
-  - 현재: 날짜 시트 안의 거래 목록은 클릭해도 반응 없음
-  - 개선: 거래 항목 클릭 → 홈 탭의 거래 상세 시트(수정·삭제 포함)와 동일한 UI 표시
-- [ ] **StatsTab — 카테고리 시트 내 거래 항목 클릭 시 상세 시트 열기**
-  - 동일하게 클릭 → 상세 시트
-- [ ] **공통 거래 상세 시트 컴포넌트 분리**
-  - 현재 `HomeTab.tsx`에 인라인으로 구현된 상세 시트를
-    `TransactionDetailSheet.tsx` 컴포넌트로 추출하여 세 곳에서 재사용
-  - Props: `transaction`, `onClose`, `onEdit`, `onDelete`
+#### 18-3. 달력·통계 화면에서 거래 클릭 → 홈 탭과 동일한 상세/수정 시트 ✅ 완료
+- [x] **CalendarTab — 날짜 시트 내 거래 항목 클릭 시 상세 시트 열기**
+- [x] **StatsTab — 카테고리 시트 내 거래 항목 클릭 시 상세 시트 열기**
+- [x] **공통 거래 상세 시트 컴포넌트 분리**
+  - `TransactionDetailSheet.tsx` 신규 생성 — HomeTab 인라인 코드 추출
+  - HomeTab, CalendarTab, StatsTab 세 곳에서 재사용
+  - CalendarTab/StatsTab: `onEdit`/`onRefresh` props 추가, MainApp에서 전달
 
 #### 18-4. LINE 알림 토글 버튼 UI 수정 ✅ 완료
 - [x] **토글 썸(동그라미)이 버튼 안에서 좌우로 이동하도록 수정**
@@ -488,10 +480,9 @@ Firestore (데이터베이스)
   4. LINE Developers 콘솔 → Messaging API 탭 → Webhook URL 설정 및 `Use webhook` 활성화
   5. 파트너가 봇 친구 추가 후 아무 메시지 전송
 
-**완료 체크리스트**
-- [ ] E2E 테스트 코드 작성
-- [ ] E2E 테스트 전체 통과
-- [ ] 공부용 Documents 파일 작성
+**완료 체크리스트 (18-2, 18-3)**
+- [x] E2E 테스트 전체 통과 (454/454)
+- [ ] 공부용 Documents 파일 작성 (`Documents/KR/28-phase19-detail-sheet.md`)
 
 ---
 

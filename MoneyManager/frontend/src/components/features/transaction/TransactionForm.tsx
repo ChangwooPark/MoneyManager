@@ -196,6 +196,7 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
         className="rounded-t-2xl overflow-y-auto modal-sheet-max-height w-full max-w-md self-center"
         style={{
           backgroundColor: 'var(--bg-secondary)',
+          minHeight: '66vh',
           transform: `translateY(${dragOffset}px)`,
           transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
         }}

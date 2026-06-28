@@ -3,11 +3,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { getTransactions } from '@/lib/api';
 import { Transaction } from '@/types';
+import TransactionDetailSheet from '../transaction/TransactionDetailSheet';
 
 // ─── Props 타입 정의 ───────────────────────────────────────────
 interface StatsTabProps {
   yearMonth: string;
   refreshKey: number;
+  onEdit:    (tx: Transaction) => void;
+  onRefresh: () => void;
 }
 
 // ─── 카테고리 집계 결과 타입 ───────────────────────────────────
@@ -61,7 +64,7 @@ function aggregateByCategory(
 }
 
 // ─── StatsTab 컴포넌트 ────────────────────────────────────────
-export default function StatsTab({ yearMonth, refreshKey }: StatsTabProps) {
+export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: StatsTabProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
@@ -70,6 +73,9 @@ export default function StatsTab({ yearMonth, refreshKey }: StatsTabProps) {
 
   // ── 카테고리 상세 시트 상태 ───────────────────────────────────
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // 카테고리 시트 안에서 클릭한 거래 → 상세 시트 표시
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [dragOffset, setDragOffset]             = useState(0);
   const [isDragging, setIsDragging]             = useState(false);
   const dragStartY = useRef<number | null>(null);
@@ -330,6 +336,7 @@ export default function StatsTab({ yearMonth, refreshKey }: StatsTabProps) {
               backgroundColor: 'var(--bg-secondary)',
               maxWidth: '28rem',
               margin: '0 auto',
+              minHeight: '66vh',
               maxHeight: '65vh',
               transform: `translateY(${dragOffset}px)`,
               transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
@@ -387,20 +394,21 @@ export default function StatsTab({ yearMonth, refreshKey }: StatsTabProps) {
                       {i > 0 && (
                         <div className="mx-4" style={{ height: '1px', backgroundColor: 'var(--border)' }} />
                       )}
-                      <div className="flex items-center justify-between px-4 py-3 gap-3">
-                        {/* 왼쪽: 날짜 + 메모 */}
+                      {/* 거래 행 — 클릭 시 상세 시트 열림 */}
+                      <div
+                        className="flex items-center justify-between px-4 py-3 gap-3 cursor-pointer active:opacity-60 transition-opacity"
+                        onClick={() => setSelectedTx(tx)}
+                      >
                         <div className="flex flex-col min-w-0 gap-0.5">
                           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                             {formatDateHeader(tx.date)}
                           </span>
-                          {/* 메모가 카테고리와 다를 때만 표시 */}
                           {tx.memo && tx.memo !== tx.category && (
                             <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                               {tx.memo}
                             </span>
                           )}
                         </div>
-                        {/* 오른쪽: 금액 */}
                         <span
                           className="shrink-0 text-sm font-semibold"
                           style={{ color: activeTab === 'income' ? 'var(--income)' : 'var(--expense)' }}
@@ -415,6 +423,16 @@ export default function StatsTab({ yearMonth, refreshKey }: StatsTabProps) {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── 거래 상세 시트 (카테고리 시트 위에 표시) ─────────────── */}
+      {selectedTx && (
+        <TransactionDetailSheet
+          transaction={selectedTx}
+          onClose={() => setSelectedTx(null)}
+          onEdit={onEdit}
+          onDeleted={() => { setSelectedTx(null); setSelectedCategory(null); onRefresh(); }}
+        />
       )}
     </div>
   );

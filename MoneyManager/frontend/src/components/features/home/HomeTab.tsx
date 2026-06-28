@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { getTransactions, getBudget, deleteTransaction } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { getTransactions, getBudget } from '@/lib/api';
 import { Transaction, Budget } from '@/types';
+import TransactionDetailSheet from '../transaction/TransactionDetailSheet';
 
 // ─── Props 타입 정의 ───────────────────────────────────────────
 interface HomeTabProps {
@@ -69,28 +70,7 @@ export default function HomeTab({ yearMonth, refreshKey, onRefresh, onEdit }: Ho
   const [error, setError]               = useState('');
 
   // ── 거래 상세 시트 상태 ───────────────────────────────────────
-  const [selectedTx,    setSelectedTx]    = useState<Transaction | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteError,   setDeleteError]   = useState('');
-
-  // 상세 시트 본체 ref — iOS 배경 스크롤 차단 시 시트 내부 터치는 허용
-  const detailSheetRef = useRef<HTMLDivElement>(null);
-
-  // ── 상세 시트 열린 동안 배경 스크롤 + Pull-to-Refresh 차단 (iOS Safari 대응) ──
-  useEffect(() => {
-    if (!selectedTx) return;
-    document.body.style.overscrollBehavior = 'none';
-    const prevent = (e: TouchEvent) => {
-      if (detailSheetRef.current?.contains(e.target as Node)) return;
-      e.preventDefault();
-    };
-    document.addEventListener('touchmove', prevent, { passive: false });
-    return () => {
-      document.body.style.overscrollBehavior = '';
-      document.removeEventListener('touchmove', prevent);
-    };
-  }, [selectedTx]);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
   // ── 데이터 조회 ───────────────────────────────────────────────
   useEffect(() => {
@@ -127,29 +107,6 @@ export default function HomeTab({ yearMonth, refreshKey, onRefresh, onEdit }: Ho
     ? Math.min(1, totalExpense / budget.amount)
     : 0;
   const dayGroups = groupByDate(transactions);
-
-  // ── 상세 시트 닫기 ────────────────────────────────────────────
-  const closeDetail = () => {
-    setSelectedTx(null);
-    setDeleteConfirm(false);
-    setDeleteError('');
-  };
-
-  // ── 거래 삭제 ────────────────────────────────────────────────
-  const handleDelete = async () => {
-    if (!selectedTx?.id) return;
-    setDeleteLoading(true);
-    setDeleteError('');
-    try {
-      await deleteTransaction(selectedTx.id);
-      closeDetail();
-      onRefresh(); // 목록 갱신
-    } catch {
-      setDeleteError('삭제에 실패했습니다. 다시 시도해 주세요.');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
 
   // ── 로딩 / 오류 상태 렌더링 ─────────────────────────────────
   if (loading) {
@@ -299,7 +256,7 @@ export default function HomeTab({ yearMonth, refreshKey, onRefresh, onEdit }: Ho
                         {/* 거래 항목 행 — 클릭 시 상세 시트 열림 */}
                         <div
                           className="flex items-center justify-between px-4 py-3 gap-3 cursor-pointer active:opacity-60 transition-opacity"
-                          onClick={() => { setSelectedTx(tx); setDeleteConfirm(false); setDeleteError(''); }}
+                          onClick={() => setSelectedTx(tx)}
                         >
                           {/* 왼쪽: 카테고리 칩 + 메모 */}
                           <div className="flex items-center gap-2 min-w-0">
@@ -345,140 +302,14 @@ export default function HomeTab({ yearMonth, refreshKey, onRefresh, onEdit }: Ho
         )}
       </div>
 
-      {/* ── 거래 상세 시트 ──────────────────────────────────────────
-          selectedTx가 설정되면 하단에서 슬라이드업으로 표시됩니다.
-          오버레이 클릭 → 닫힘, 시트 내부 클릭 → 이벤트 버블링 차단  */}
+      {/* ── 거래 상세 시트 (공통 컴포넌트) ──────────────────────── */}
       {selectedTx && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col justify-end"
-          style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
-          onClick={closeDetail}
-        >
-          <div
-            ref={detailSheetRef}
-            className="rounded-t-2xl w-full max-w-md self-center"
-            style={{ backgroundColor: 'var(--bg-secondary)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* 핸들 바 */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: 'var(--border)' }} />
-            </div>
-
-            {!deleteConfirm ? (
-              /* ── 상세 보기 단계 ── */
-              <div
-                className="px-5 pb-8 flex flex-col gap-4"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
-              >
-                {/* 헤더 */}
-                <div className="flex items-center justify-between pt-1">
-                  <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                    거래 상세
-                  </h2>
-                  <button
-                    onClick={closeDetail}
-                    className="w-8 h-8 flex items-center justify-center rounded-full text-xl"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* 거래 정보 카드 */}
-                <div
-                  className="rounded-2xl p-4 flex flex-col gap-3"
-                  style={{ backgroundColor: 'var(--bg-card)' }}
-                >
-                  {[
-                    { label: '날짜',   value: formatDateHeader(selectedTx.date),                        color: 'var(--text-primary)' },
-                    { label: '유형',   value: selectedTx.type === 'income' ? '수입' : '지출',            color: selectedTx.type === 'income' ? 'var(--income)' : 'var(--expense)' },
-                    { label: '카테고리', value: selectedTx.category,                                    color: 'var(--text-primary)' },
-                    { label: '금액',   value: `${selectedTx.type === 'income' ? '+' : '-'}${formatYen(selectedTx.amount)}`, color: selectedTx.type === 'income' ? 'var(--income)' : 'var(--expense)' },
-                    ...(selectedTx.memo ? [{ label: '메모', value: selectedTx.memo, color: 'var(--text-secondary)' }] : []),
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="flex justify-between items-start gap-4">
-                      <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)' }}>
-                        {label}
-                      </span>
-                      <span className="text-sm font-medium text-right" style={{ color }}>
-                        {value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* 수정 / 삭제 버튼 */}
-                <div className="flex gap-3">
-                  <button
-                    className="flex-1 py-3 rounded-xl text-sm font-bold border"
-                    style={{
-                      color: 'var(--accent)',
-                      borderColor: 'var(--accent)',
-                      backgroundColor: 'transparent',
-                    }}
-                    onClick={() => {
-                      const tx = selectedTx;
-                      closeDetail();
-                      onEdit(tx); // MainApp에서 수정 폼 열기
-                    }}
-                  >
-                    수정
-                  </button>
-                  <button
-                    className="flex-1 py-3 rounded-xl text-sm font-bold"
-                    style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
-                    onClick={() => setDeleteConfirm(true)}
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-
-            ) : (
-              /* ── 삭제 확인 단계 ── */
-              <div
-                className="px-5 pb-8 flex flex-col gap-4"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
-              >
-                <div className="pt-2 text-center flex flex-col gap-1">
-                  <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    거래를 삭제하시겠습니까?
-                  </p>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {selectedTx.category} {selectedTx.type === 'income' ? '+' : '-'}{formatYen(selectedTx.amount)}
-                  </p>
-                </div>
-
-                {deleteError && (
-                  <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>{deleteError}</p>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    className="flex-1 py-3 rounded-xl text-sm font-bold border"
-                    style={{
-                      color: 'var(--text-secondary)',
-                      borderColor: 'var(--border)',
-                      backgroundColor: 'transparent',
-                    }}
-                    onClick={() => { setDeleteConfirm(false); setDeleteError(''); }}
-                  >
-                    취소
-                  </button>
-                  <button
-                    className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
-                    style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
-                    disabled={deleteLoading}
-                    onClick={handleDelete}
-                  >
-                    {deleteLoading ? '삭제 중...' : '삭제'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <TransactionDetailSheet
+          transaction={selectedTx}
+          onClose={() => setSelectedTx(null)}
+          onEdit={onEdit}
+          onDeleted={onRefresh}
+        />
       )}
     </>
   );

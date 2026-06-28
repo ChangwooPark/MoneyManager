@@ -56,8 +56,22 @@ export default function MainApp() {
             onEdit={setEditingTx}
           />
         )}
-        {activeTab === 'calendar' && <CalendarTab yearMonth={yearMonth} refreshKey={refreshKey} />}
-        {activeTab === 'stats'    && <StatsTab    yearMonth={yearMonth} refreshKey={refreshKey} />}
+        {activeTab === 'calendar' && (
+          <CalendarTab
+            yearMonth={yearMonth}
+            refreshKey={refreshKey}
+            onEdit={setEditingTx}
+            onRefresh={handleSaved}
+          />
+        )}
+        {activeTab === 'stats' && (
+          <StatsTab
+            yearMonth={yearMonth}
+            refreshKey={refreshKey}
+            onEdit={setEditingTx}
+            onRefresh={handleSaved}
+          />
+        )}
         {activeTab === 'more'     && <MoreTab onReset={handleSaved} />}
       </main>
 
