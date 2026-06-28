@@ -72,8 +72,10 @@ Production and Development environments are fully isolated.
 
 ```
 push to develop → GitHub Actions → auto-deploy to dev server → verify
-push to main    → GitHub Actions → auto-deploy to production
+create PR (develop → main) and merge → GitHub Actions → auto-deploy to production
 ```
+
+> **`main` branch protection**: Direct pushes are blocked. Changes must go through a PR from `develop`.
 
 ---
 
@@ -94,16 +96,17 @@ npm run dev          # → http://localhost:3000
 
 ## Deployment
 
-Each branch automatically deploys to its corresponding environment.
+Development is verified first, then promoted to production via PR.
 
 ```
-# Deploy to development
+# Step 1: Deploy to development and verify
 git push origin develop
 → Backend:  Docker build → Artifact Registry(dev) → Cloud Run(money-manager-dev)
 → Frontend: Vercel dev fixed URL (frontend-dev-changwoo-park.vercel.app)
 
-# Deploy to production (via PR only)
-git push origin main
+# Step 2: After verification, deploy to production
+gh pr create --base main --head develop  # create PR
+gh pr merge <PR#> --merge               # merge → triggers production deploy
 → Backend:  Docker build → Artifact Registry → Cloud Run(money-manager)
 → Frontend: Vercel production URL (frontend-changwoo-park.vercel.app)
 ```

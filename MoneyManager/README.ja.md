@@ -72,8 +72,10 @@ Firestore          LINE Messaging API
 
 ```
 developブランチへpush → GitHub Actions → 開発サーバー自動デプロイ → 確認
-mainブランチへpush    → GitHub Actions → 本番サーバー自動デプロイ
+develop → main PRを作成してマージ → GitHub Actions → 本番サーバー自動デプロイ
 ```
+
+> **`main`ブランチ保護ルール**: 直接pushは不可。`develop`ブランチからPRを通じてのみ反映されます。
 
 ---
 
@@ -94,18 +96,19 @@ npm run dev          # → http://localhost:3000
 
 ## デプロイ
 
-ブランチに応じて対応する環境に自動デプロイされます。
+開発確認後、PRを通じて本番に反映するフローで運用します。
 
 ```
-# 開発環境デプロイ
+# 1. 開発環境へデプロイして確認
 git push origin develop
 → バックエンド: Dockerビルド → Artifact Registry(dev) → Cloud Run(money-manager-dev)
-→ フロントエンド: Vercel開発固定URL自動デプロイ (frontend-dev-changwoo-park.vercel.app)
+→ フロントエンド: Vercel開発固定URL (frontend-dev-changwoo-park.vercel.app)
 
-# 本番環境デプロイ（PRを通じてのみ）
-git push origin main
+# 2. 開発サーバーで確認後、本番へ反映
+gh pr create --base main --head develop  # PR作成
+gh pr merge <PR番号> --merge             # PRマージ → 本番自動デプロイ
 → バックエンド: Dockerビルド → Artifact Registry → Cloud Run(money-manager)
-→ フロントエンド: Vercel本番URL自動デプロイ (frontend-changwoo-park.vercel.app)
+→ フロントエンド: Vercel本番URL (frontend-changwoo-park.vercel.app)
 ```
 
 ---
