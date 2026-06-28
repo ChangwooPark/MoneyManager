@@ -68,6 +68,7 @@ Firestore          LINE Messaging API
 | GCP 프로젝트 | `money-manager-499703` | `money-manager-dev-001` |
 | Cloud Run | `money-manager` | `money-manager-dev` |
 | Firestore | 운영 DB | 개발 DB (완전 분리) |
+| 프론트엔드 URL | `frontend-changwoo-park.vercel.app` | `frontend-dev-changwoo-park.vercel.app` |
 
 ```
 develop 브랜치 push → GitHub Actions → 개발 서버 자동 배포 → 확인
@@ -99,7 +100,7 @@ npm run dev          # → http://localhost:3000
 # 개발 환경 배포
 git push origin develop
 → 백엔드: Docker 빌드 → Artifact Registry(dev) → Cloud Run(money-manager-dev)
-→ 프론트엔드: Vercel Preview 자동 배포
+→ 프론트엔드: Vercel 개발 고정 URL 자동 배포 (frontend-dev-changwoo-park.vercel.app)
 
 # 운영 환경 배포
 git push origin main
