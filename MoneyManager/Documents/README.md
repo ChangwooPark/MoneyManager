@@ -43,6 +43,8 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | [30-dev3-branch-strategy](./KR/30-dev3-branch-strategy.md) | GitHub 브랜치 전략 (develop 브랜치 생성, main 보호 규칙, force push 개념) |
 | [31-dev4-github-actions-split](./KR/31-dev4-github-actions-split.md) | GitHub Actions 워크플로우 분리 (deploy-prod.yml / deploy-dev.yml, secrets, github.sha) |
 | [32-dev5-vercel-fixed-url](./KR/32-dev5-vercel-fixed-url.md) | Vercel 개발 고정 URL 설정 (vercel alias, Preview URL vs 고정 URL, 커맨드 치환) |
+| [33-phase15-ios-pull-to-refresh](./KR/33-phase15-ios-pull-to-refresh.md) | iOS Safari Pull-to-Refresh 충돌 해결 (overscrollBehavior, useEffect cleanup, passive 이벤트) |
+| [34-dev6-separation-verification](./KR/34-dev6-separation-verification.md) | 운영/개발 완전 분리 최종 검증 (DB 격리 확인, E2E URL 환경변수화, PLAYWRIGHT_BASE_URL) |
 
 ---
 
