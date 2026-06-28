@@ -565,42 +565,15 @@ Firestore (데이터베이스)
 
 ---
 
-### Dev-4: GitHub Actions 워크플로우 분리
+### Dev-4: GitHub Actions 워크플로우 분리 ✅ 완료
 
-현재 `.github/workflows/deploy.yml`은 `main` push 시에만 동작합니다.
-`develop` push 시 개발 환경에 배포하는 로직을 추가합니다.
-
-**변경 전 (현재)**
-```yaml
-on:
-  push:
-    branches: [main]
-```
-
-**변경 후 (목표)**
-```yaml
-# deploy-prod.yml — 운영 배포 (기존 파일 이름 변경)
-on:
-  push:
-    branches: [main]
-# → GCP 운영 프로젝트에 배포
-
-# deploy-dev.yml — 개발 배포 (신규 파일)
-on:
-  push:
-    branches: [develop]
-# → GCP 개발 프로젝트에 배포
-# → 사용하는 Secrets: GCP_DEV_SA_KEY, GCP_DEV_PROJECT_ID
-```
-
-- [ ] 기존 `deploy.yml` → `deploy-prod.yml` 이름 변경 (내용 동일)
-- [ ] `deploy-dev.yml` 신규 작성
-  - 개발용 GCP SA 키(`GCP_DEV_SA_KEY`) 사용
-  - 개발용 Cloud Run(`money-manager-dev`) 배포
-  - Cloud Run 환경변수 `GCP_PROJECT_ID=money-manager-dev` 지정
-- [ ] GitHub Secrets에 개발용 시크릿 등록
-  - `GCP_DEV_SA_KEY`
-  - `GCP_DEV_PROJECT_ID`
+- [x] `deploy.yml` → `deploy-prod.yml` 이름 변경 (main 브랜치, 운영 배포)
+- [x] `deploy-dev.yml` 신규 생성 (develop 브랜치, 개발 배포)
+  - `GCP_DEV_SA_KEY` / `GCP_DEV_PROJECT_ID` 시크릿 사용
+  - Artifact Registry: `money-manager-dev` 저장소
+  - Cloud Run: `money-manager-dev` 서비스 배포
+  - Vercel: `--prod` 없이 Preview URL 자동 생성
+  - `NEXT_PUBLIC_API_URL` → 개발 백엔드 URL 주입
 
 ---
 
