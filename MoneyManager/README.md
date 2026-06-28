@@ -72,8 +72,10 @@ Firestore          LINE Messaging API
 
 ```
 develop 브랜치 push → GitHub Actions → 개발 서버 자동 배포 → 확인
-main 브랜치 push    → GitHub Actions → 운영 서버 자동 배포
+develop → main PR 생성 및 머지 → GitHub Actions → 운영 서버 자동 배포
 ```
+
+> **`main` 브랜치 보호 규칙**: 직접 push 불가. `develop` 브랜치에서 PR을 통해서만 반영됩니다.
 
 ---
 
@@ -94,18 +96,19 @@ npm run dev          # → http://localhost:3000
 
 ## 배포
 
-브랜치에 따라 자동으로 해당 환경에 배포됩니다.
+개발 확인 후 PR을 통해 운영에 반영하는 흐름으로 운영됩니다.
 
 ```
-# 개발 환경 배포
+# 1단계: 개발 환경 배포 및 확인
 git push origin develop
 → 백엔드: Docker 빌드 → Artifact Registry(dev) → Cloud Run(money-manager-dev)
-→ 프론트엔드: Vercel 개발 고정 URL 자동 배포 (frontend-dev-changwoo-park.vercel.app)
+→ 프론트엔드: Vercel 개발 고정 URL (frontend-dev-changwoo-park.vercel.app)
 
-# 운영 환경 배포
-git push origin main
+# 2단계: 개발 서버에서 확인 완료 후 운영 반영
+gh pr create --base main --head develop  # PR 생성
+gh pr merge <PR번호> --merge             # PR 머지 → 운영 자동 배포
 → 백엔드: Docker 빌드 → Artifact Registry → Cloud Run(money-manager)
-→ 프론트엔드: Vercel Production 자동 배포
+→ 프론트엔드: Vercel Production URL (frontend-changwoo-park.vercel.app)
 ```
 
 ---
