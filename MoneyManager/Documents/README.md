@@ -42,6 +42,7 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | [29-dev-environment-setup](./KR/29-dev-environment-setup.md) | 개발 환경 구축 (GCP 프로젝트 분리, Service Account, Secret Manager, Cloud Run) |
 | [30-dev3-branch-strategy](./KR/30-dev3-branch-strategy.md) | GitHub 브랜치 전략 (develop 브랜치 생성, main 보호 규칙, force push 개념) |
 | [31-dev4-github-actions-split](./KR/31-dev4-github-actions-split.md) | GitHub Actions 워크플로우 분리 (deploy-prod.yml / deploy-dev.yml, secrets, github.sha) |
+| [32-dev5-vercel-fixed-url](./KR/32-dev5-vercel-fixed-url.md) | Vercel 개발 고정 URL 설정 (vercel alias, Preview URL vs 고정 URL, 커맨드 치환) |
 
 ---
 
