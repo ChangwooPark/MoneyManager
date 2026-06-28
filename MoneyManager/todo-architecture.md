@@ -482,11 +482,190 @@ Firestore (데이터베이스)
 
 **완료 체크리스트 (18-2, 18-3)**
 - [x] E2E 테스트 전체 통과 (454/454)
-- [ ] 공부용 Documents 파일 작성 (`Documents/KR/28-phase19-detail-sheet.md`)
+- [x] 공부용 Documents 파일 작성 (`Documents/KR/28-phase19-detail-sheet.md`)
+
+---
+
+## Phase Dev (긴급): 개발 환경 구축 — 운영/개발 완전 분리
+
+### 배경 및 목표
+
+현재는 `main` 브랜치 push → 바로 운영 배포되는 구조입니다.
+기능 개발 중 버그가 섞이거나, 미완성 코드가 실제 사용 중인 데이터에 영향을 줄 수 있습니다.
+
+**목표**: 운영과 완전히 분리된 개발 환경을 구축하여, 개발 서버에서 검증 완료 후 운영으로 승격하는 안전한 워크플로우를 확립합니다.
+
+### 완성 후 개발 워크플로우
+
+```
+새 기능 개발
+  → develop 브랜치에서 작업 및 push
+  → GitHub Actions: 개발 환경(dev) 자동 배포
+  → 개발 서버 + 개발 DB로 E2E 테스트 및 수동 확인
+  → 문제 없으면 develop → main PR 생성
+  → main merge
+  → GitHub Actions: 운영 환경(prod) 자동 배포
+```
+
+### 환경 구성 목표
+
+| 항목 | 운영(Production) | 개발(Development) |
+|------|------|------|
+| GitHub 브랜치 | `main` | `develop` |
+| GCP 프로젝트 | `money-manager-499703` | `money-manager-dev-XXXXXX` (신규) |
+| Firestore DB | 운영 DB | 개발 DB (완전 분리) |
+| Cloud Run 서비스 | `money-manager` | `money-manager-dev` |
+| Artifact Registry | `money-manager` | `money-manager-dev` |
+| 프론트엔드 | Vercel Production | Vercel Preview (develop 브랜치 고정 URL) |
+| LINE 알림 | 운영 토큰 | 개발 토큰 또는 알림 OFF |
+
+> **개발 GCP 프로젝트를 별도 생성하는 이유**
+> GCP 무료 티어(Firestore, Cloud Run, Artifact Registry)는 프로젝트 단위로 적용됩니다.
+> 같은 프로젝트에 두 번째 Firestore 데이터베이스를 추가하면 유료이므로, 별도 프로젝트가 비용 효율적입니다.
+
+---
+
+### Dev-1: GCP 개발 프로젝트 생성 및 인프라 구성
+
+- [ ] **GCP 개발 프로젝트 생성**
+  ```bash
+  gcloud projects create money-manager-dev --name="MoneyManager Dev"
+  gcloud config set project money-manager-dev
+  ```
+- [ ] **결제 계정 연결** (Cloud Run, Artifact Registry 사용을 위해 필요 — 무료 티어 내 운영 목표)
+- [ ] **필요한 API 활성화**
+  ```bash
+  gcloud services enable run.googleapis.com \
+    firestore.googleapis.com \
+    artifactregistry.googleapis.com \
+    secretmanager.googleapis.com
+  ```
+- [ ] **Firestore 개발 데이터베이스 생성** (Native Mode, `asia-northeast3`)
+  ```bash
+  gcloud firestore databases create --location=asia-northeast3
+  ```
+- [ ] **Artifact Registry 개발 저장소 생성**
+  ```bash
+  gcloud artifacts repositories create money-manager-dev \
+    --repository-format=docker \
+    --location=asia-northeast3
+  ```
+- [ ] **개발용 Service Account 생성 및 권한 부여**
+  ```bash
+  gcloud iam service-accounts create money-manager-dev-sa \
+    --display-name="MoneyManager Dev SA"
+  # 역할 부여: Firestore User, Cloud Run Admin, Artifact Registry Writer, Secret Manager Accessor
+  ```
+- [ ] **GitHub Actions용 SA 키 발급 및 GitHub Secrets 등록**
+  - Secret 이름: `GCP_DEV_SA_KEY` (JSON 키), `GCP_DEV_PROJECT_ID`
+
+---
+
+### Dev-2: 개발 백엔드 초기 배포
+
+- [ ] **Secret Manager에 개발용 시크릿 등록**
+  ```bash
+  # 개발 환경에서는 LINE 알림 토큰 없이 시작해도 무방 (알림 기능 스킵)
+  echo "dev-pin" | gcloud secrets create PIN_HASH --data-file=-
+  ```
+- [ ] **백엔드를 개발 Cloud Run에 최초 배포**
+  - 이미지: `asia-northeast3-docker.pkg.dev/money-manager-dev/money-manager-dev/backend:latest`
+  - Cloud Run 서비스명: `money-manager-dev`
+  - `--set-env-vars GCP_PROJECT_ID=money-manager-dev`
+  - `--max-instances=1` (비용 통제)
+- [ ] **개발 백엔드 URL 확인** 및 기록
+
+---
+
+### Dev-3: GitHub 브랜치 전략 구성
+
+- [ ] **`develop` 브랜치 생성**
+  ```bash
+  git checkout -b develop
+  git push -u origin develop
+  ```
+- [ ] **GitHub 브랜치 보호 규칙 설정** (GitHub 웹 → Settings → Branches)
+  - `main` 브랜치: PR 없이 직접 push 금지
+  - `develop` 브랜치: 개인 프로젝트이므로 직접 push 허용 (유연하게 운영)
+- [ ] **기본 브랜치를 `develop`으로 변경** (선택 사항 — 새 기능 작업의 기준점)
+
+---
+
+### Dev-4: GitHub Actions 워크플로우 분리
+
+현재 `.github/workflows/deploy.yml`은 `main` push 시에만 동작합니다.
+`develop` push 시 개발 환경에 배포하는 로직을 추가합니다.
+
+**변경 전 (현재)**
+```yaml
+on:
+  push:
+    branches: [main]
+```
+
+**변경 후 (목표)**
+```yaml
+# deploy-prod.yml — 운영 배포 (기존 파일 이름 변경)
+on:
+  push:
+    branches: [main]
+# → GCP 운영 프로젝트에 배포
+
+# deploy-dev.yml — 개발 배포 (신규 파일)
+on:
+  push:
+    branches: [develop]
+# → GCP 개발 프로젝트에 배포
+# → 사용하는 Secrets: GCP_DEV_SA_KEY, GCP_DEV_PROJECT_ID
+```
+
+- [ ] 기존 `deploy.yml` → `deploy-prod.yml` 이름 변경 (내용 동일)
+- [ ] `deploy-dev.yml` 신규 작성
+  - 개발용 GCP SA 키(`GCP_DEV_SA_KEY`) 사용
+  - 개발용 Cloud Run(`money-manager-dev`) 배포
+  - Cloud Run 환경변수 `GCP_PROJECT_ID=money-manager-dev` 지정
+- [ ] GitHub Secrets에 개발용 시크릿 등록
+  - `GCP_DEV_SA_KEY`
+  - `GCP_DEV_PROJECT_ID`
+
+---
+
+### Dev-5: Vercel 개발 프론트엔드 설정
+
+Vercel은 `main` 이외 브랜치를 push하면 Preview URL을 자동 생성합니다.
+`develop` 브랜치를 위한 환경변수만 별도로 설정하면 됩니다.
+
+- [ ] **Vercel 대시보드 → Settings → Environment Variables**
+  - `NEXT_PUBLIC_API_URL` 을 `develop` 브랜치에 한해 개발 백엔드 URL로 설정
+  - (Preview 환경 선택 + Branch: develop)
+- [ ] **develop 브랜치 push 후 Preview URL 확인**
+  - 개발 프론트 → 개발 백엔드 → 개발 Firestore 연결 동작 확인
+
+---
+
+### Dev-6: 분리 최종 검증
+
+- [ ] 개발 환경에서 거래 추가 → 개발 Firestore에만 저장됨 확인
+- [ ] 운영 환경 Firestore에 영향 없음 확인
+- [ ] `develop` push → 개발 자동 배포 → 개발 서버 반영 확인
+- [ ] `main` push → 운영 자동 배포 → 운영 서버 반영 확인
+- [ ] E2E 테스트를 개발 서버 URL 기준으로 실행 가능하도록 설정 검토
+  - `playwright.config.ts`의 `baseURL`을 환경변수로 전환 (`PLAYWRIGHT_BASE_URL`)
+
+**완료 체크리스트**
+- [ ] Dev-1: GCP 개발 프로젝트 + 인프라 구성
+- [ ] Dev-2: 개발 백엔드 초기 배포
+- [ ] Dev-3: GitHub `develop` 브랜치 생성 및 보호 규칙
+- [ ] Dev-4: GitHub Actions 워크플로우 분리 (`deploy-prod.yml` / `deploy-dev.yml`)
+- [ ] Dev-5: Vercel 개발 환경변수 설정
+- [ ] Dev-6: 운영/개발 완전 분리 최종 확인
+- [ ] 공부용 Documents 파일 작성 (`Documents/KR/29-dev-environment-setup.md`)
 
 ---
 
 ## 서비스 URL 및 GCP 정보
+
+### 운영(Production)
 
 | 항목 | 값 |
 |------|------|
@@ -496,6 +675,19 @@ Firestore (데이터베이스)
 | Firestore DB | `(default)` Native Mode |
 | Artifact Registry | `money-manager` |
 | Cloud Run 서비스 | `money-manager` |
+| GitHub 브랜치 | `main` |
+
+### 개발(Development) — Phase Dev 완료 후 채울 항목
+
+| 항목 | 값 |
+|------|------|
+| 백엔드 URL | (Dev-2 완료 후 기재) |
+| GCP 프로젝트 ID | (Dev-1 완료 후 기재) |
+| 리전 | `asia-northeast3` (서울) |
+| Firestore DB | `(default)` Native Mode |
+| Artifact Registry | `money-manager-dev` |
+| Cloud Run 서비스 | `money-manager-dev` |
+| GitHub 브랜치 | `develop` |
 
 ---
 
