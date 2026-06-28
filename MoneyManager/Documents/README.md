@@ -40,6 +40,7 @@ TypeScript + GCP 기반 가계부 프로젝트 전체 문서입니다.
 | [27-line-partner-setup](./KR/27-line-partner-setup.md) | LINE 파트너 추가 설정 가이드 (Webhook, 자동응답 OFF, 등록 절차) |
 | [28-phase19-detail-sheet](./KR/28-phase19-detail-sheet.md) | 거래 상세 시트 공통화, 바텀시트 minHeight, z-index, Props Drilling |
 | [29-dev-environment-setup](./KR/29-dev-environment-setup.md) | 개발 환경 구축 (GCP 프로젝트 분리, Service Account, Secret Manager, Cloud Run) |
+| [30-dev3-branch-strategy](./KR/30-dev3-branch-strategy.md) | GitHub 브랜치 전략 (develop 브랜치 생성, main 보호 규칙, force push 개념) |
 
 ---
 
