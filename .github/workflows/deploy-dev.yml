@@ -47,11 +47,12 @@ jobs:
             --port=8080 \
             --project=${{ secrets.GCP_DEV_PROJECT_ID }}
 
-  # ─── 프론트엔드: Vercel Preview 배포 ────────────────────────────
-  # 운영과 달리 --prod 없이 배포하여 Vercel Preview URL을 생성합니다.
+  # ─── 프론트엔드: Vercel 개발 고정 URL 배포 ──────────────────────
+  # --prod 없이 배포 후 vercel alias로 고정 URL(frontend-dev-changwoo-park.vercel.app)을
+  # 최신 배포에 연결합니다. develop push마다 같은 URL이 갱신됩니다.
   # NEXT_PUBLIC_API_URL은 개발 백엔드 URL을 가리킵니다.
   deploy-frontend:
-    name: Deploy Frontend to Vercel (Dev Preview)
+    name: Deploy Frontend to Vercel (Dev Fixed URL)
     runs-on: ubuntu-latest
 
     steps:
@@ -66,7 +67,7 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel
 
-      # Preview 환경 설정 pull (--environment=preview)
+      # Preview 환경 설정 pull
       - name: Pull Vercel project settings
         working-directory: MoneyManager/frontend
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
@@ -74,7 +75,7 @@ jobs:
           VERCEL_ORG_ID: team_C6F9p19SH8pOyJxy7x8OtS82
           VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
 
-      # --prod 없이 빌드 + 개발 백엔드 URL 주입
+      # 개발 백엔드 URL을 주입하여 빌드
       - name: Build project
         working-directory: MoneyManager/frontend
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
@@ -83,10 +84,12 @@ jobs:
           VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
           NEXT_PUBLIC_API_URL: https://money-manager-dev-576447610294.asia-northeast3.run.app
 
-      # --prod 없이 배포 → Vercel이 Preview URL 자동 생성
-      - name: Deploy to Vercel Preview
+      # 배포 후 고정 alias 적용 — develop push마다 동일한 URL이 최신 빌드를 가리킴
+      - name: Deploy and alias to fixed dev URL
         working-directory: MoneyManager/frontend
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          vercel alias set $DEPLOY_URL frontend-dev-changwoo-park.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: team_C6F9p19SH8pOyJxy7x8OtS82
           VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
