@@ -556,17 +556,12 @@ Firestore (데이터베이스)
 
 ---
 
-### Dev-3: GitHub 브랜치 전략 구성
+### Dev-3: GitHub 브랜치 전략 구성 ✅ 완료
 
-- [ ] **`develop` 브랜치 생성**
-  ```bash
-  git checkout -b develop
-  git push -u origin develop
-  ```
-- [ ] **GitHub 브랜치 보호 규칙 설정** (GitHub 웹 → Settings → Branches)
-  - `main` 브랜치: PR 없이 직접 push 금지
-  - `develop` 브랜치: 개인 프로젝트이므로 직접 push 허용 (유연하게 운영)
-- [ ] **기본 브랜치를 `develop`으로 변경** (선택 사항 — 새 기능 작업의 기준점)
+- [x] **`develop` 브랜치 생성** (main 기준으로 분기, origin/develop 추적 설정)
+- [x] **GitHub 브랜치 보호 규칙 설정**
+  - `main`: `protected: true` — force push·브랜치 삭제 금지
+  - `develop`: `protected: false` — 개인 프로젝트이므로 직접 push 허용
 
 ---
 
