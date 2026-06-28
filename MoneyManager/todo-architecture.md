@@ -486,6 +486,96 @@ Firestore (데이터베이스)
 
 ---
 
+### Phase 19: 영수증 카메라 스캔 — 거래 자동 입력
+
+#### 19-1. 기능 개요
+
+거래 입력 폼(TransactionForm)에서 카메라로 영수증을 촬영하면,
+AI가 영수증을 분석하여 **총 금액**과 **메모(가게명/품목 등)**를 자동으로 입력 필드에 채워주는 기능.
+
+#### 19-2. 사용자 흐름
+
+```
+FAB(+) 버튼 → 거래 입력 폼 열림
+  → [영수증 스캔] 버튼 탭
+  → 카메라 또는 사진 라이브러리에서 영수증 이미지 선택
+  → 이미지를 백엔드로 전송
+  → AI(Vision API 또는 Claude API)가 영수증 분석
+  → 금액·메모 필드에 자동 입력
+  → 사용자가 내용 확인 후 저장
+```
+
+#### 19-3. 구현 방향
+
+**프론트엔드**
+- `TransactionForm.tsx`에 [영수증 스캔] 버튼 추가
+- `<input type="file" accept="image/*" capture="environment">` 로 카메라/갤러리 접근
+  - `capture="environment"` : 후면 카메라 우선
+- 이미지 선택 후 `FormData`로 백엔드 전송
+- 분석 중 로딩 상태 표시 (스피너 또는 "분석 중..." 텍스트)
+- 응답 받으면 `amount` · `memo` 필드에 자동 세팅
+
+**백엔드**
+- `POST /receipts/scan` 엔드포인트 신규 추가
+  - `multipart/form-data`로 이미지 수신
+  - AI API 호출 후 결과 반환
+  - 응답 형식: `{ amount: number, memo: string, confidence: number }`
+
+**AI 분석 옵션 (둘 중 선택)**
+
+| 방법 | 설명 | 비용 |
+|------|------|------|
+| Google Cloud Vision API | OCR로 텍스트 추출 → 정규식으로 금액·가게명 파싱 | 월 1,000건 무료 |
+| Claude API (Vision) | 이미지를 직접 이해하여 구조화된 JSON 반환 | 토큰 과금 |
+
+추천: **Claude API** — 일본어 영수증의 다양한 레이아웃에 더 유연하게 대응 가능
+
+#### 19-4. 상세 구현 메모
+
+**프론트엔드 핵심 코드 구조**
+```typescript
+// 이미지 선택 → FormData 전송
+const handleReceiptScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  setScanning(true);
+  const result = await scanReceipt(formData);  // POST /receipts/scan
+  setAmount(result.amount);
+  setMemo(result.memo);
+  setScanning(false);
+};
+```
+
+**백엔드 Claude API 호출 예시**
+```typescript
+// 이미지를 base64로 인코딩 후 Claude Vision으로 분석
+const response = await anthropic.messages.create({
+  model: 'claude-opus-4-8',
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Image } },
+      { type: 'text', text: '이 영수증에서 합계 금액(円)과 가게명을 JSON으로 반환해주세요. { "amount": number, "memo": string }' }
+    ]
+  }]
+});
+```
+
+**완료 체크리스트**
+- [ ] 백엔드 `POST /receipts/scan` 엔드포인트 구현
+- [ ] Claude API Secret Manager 등록 (`ANTHROPIC_API_KEY`)
+- [ ] 프론트엔드 영수증 스캔 버튼 및 카메라 연동
+- [ ] 분석 결과 자동 입력 구현
+- [ ] 분석 실패 시 오류 처리 (수동 입력으로 fallback)
+- [ ] E2E 테스트 작성
+- [ ] 공부용 Documents 파일 작성
+
+---
+
 ## Phase Dev (긴급): 개발 환경 구축 — 운영/개발 완전 분리
 
 ### 배경 및 목표
