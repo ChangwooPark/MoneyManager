@@ -1,6 +1,6 @@
 # MoneyManager — 日本生活費管理サービス
 
-> **[한국어](./README.md)** · **[English](./README.en.md)**
+> **[한국어](./MoneyManager/README.md)** · **[English](./MoneyManager/README.en.md)**
 
 Claude AIを開発パートナーとして活用し、企画から本番運用まで一人で設計・デプロイしたフルスタック家計簿Webサービスです。
 
@@ -116,4 +116,4 @@ git push origin main
 
 パートナー追加を含む詳細な設定手順は以下のドキュメントを参照してください。
 
-→ [Documents/JP/27-line-partner-setup.md](./Documents/JP/27-line-partner-setup.md)
+→ [Documents/JP/27-line-partner-setup.md](./MoneyManager/Documents/JP/27-line-partner-setup.md)
