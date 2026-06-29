@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getTransactions } from '@/lib/api';
 import { Transaction } from '@/types';
 import TransactionDetailSheet from '../transaction/TransactionDetailSheet';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // ─── Props 타입 정의 ───────────────────────────────────────────
 interface StatsTabProps {
@@ -31,15 +32,6 @@ function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
 }
 
-// ─── 날짜 헤더 포맷 ────────────────────────────────────────────
-// "2026-06-18" → "6월 18일 (수)"
-function formatDateHeader(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return `${m}월 ${d}일 (${days[date.getDay()]})`;
-}
-
 // ─── 카테고리별 집계 ───────────────────────────────────────────
 function aggregateByCategory(
   transactions: Transaction[],
@@ -65,6 +57,7 @@ function aggregateByCategory(
 
 // ─── StatsTab 컴포넌트 ────────────────────────────────────────
 export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: StatsTabProps) {
+  const { t, formatDateHeader } = useLanguage();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
@@ -91,7 +84,7 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
         const txList = await getTransactions(yearMonth);
         if (!cancelled) setTransactions(txList);
       } catch {
-        if (!cancelled) setError('데이터를 불러오는 데 실패했습니다.');
+        if (!cancelled) setError(t('loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -187,7 +180,7 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
                 : '2px solid transparent',
             }}
           >
-            {tab === 'income' ? '수입' : '지출'}
+            {tab === 'income' ? t('income') : t('expense')}
           </button>
         ))}
       </div>
@@ -195,7 +188,7 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
       {/* ── 로딩 상태 ────────────────────────────────────────── */}
       {loading && (
         <div className="flex items-center justify-center h-48">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>불러오는 중...</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('loading')}</p>
         </div>
       )}
 
@@ -213,7 +206,7 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
           {rows.length === 0 ? (
             <div className="flex items-center justify-center h-48">
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                이번 달 {activeTab === 'income' ? '수입' : '지출'} 내역이 없습니다.
+                {activeTab === 'income' ? t('noIncomeStats') : t('noExpenseStats')}
               </p>
             </div>
           ) : (
@@ -224,7 +217,7 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
                 style={{ backgroundColor: 'var(--bg-secondary)' }}
               >
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  총 {grandCount}건
+                  {t('statsTotalLabel')} {grandCount}{t('statsCountUnit')}
                 </span>
                 <span
                   className="text-base font-bold"
@@ -240,17 +233,17 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
                 style={{ borderBottom: '1px solid var(--border)' }}
               >
                 <span className="flex-1 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                  내용
+                  {t('statsColContent')}
                 </span>
                 <span className="w-12 text-center text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                  건수
+                  {t('statsColCount')}
                 </span>
                 <button
                   onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
                   className="w-28 flex items-center justify-end gap-1"
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  <span className="text-xs font-semibold">금액</span>
+                  <span className="text-xs font-semibold">{t('statsColAmount')}</span>
                   <span className="text-xs">{sortDir === 'desc' ? '↓' : '↑'}</span>
                 </button>
               </div>
@@ -372,7 +365,7 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
                 onClick={closeSheet}
                 className="text-lg leading-none px-2 py-1 shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
-                aria-label="닫기"
+                aria-label={t('close')}
               >
                 ✕
               </button>
@@ -382,7 +375,7 @@ export default function StatsTab({ yearMonth, refreshKey, onEdit, onRefresh }: S
             <div className="overflow-y-auto flex-1 px-4 py-3">
               {selectedTransactions.length === 0 ? (
                 <p className="text-sm text-center py-8" style={{ color: 'var(--text-secondary)' }}>
-                  거래 내역이 없습니다.
+                  {t('statsNoTx')}
                 </p>
               ) : (
                 <div

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getPin, updatePin } from '../services/firestore';
+import { getPin, updatePin, getLanguage, setLanguage } from '../services/firestore';
 
 const router = Router();
 
@@ -30,6 +30,23 @@ router.put('/pin', async (req: Request, res: Response) => {
   }
   await updatePin(newPin);
   res.json({ success: true });
+});
+
+// ─── Language ────────────────────────────────────────────────
+
+router.get('/language', async (_req: Request, res: Response) => {
+  const language = await getLanguage();
+  res.json({ language });
+});
+
+router.put('/language', async (req: Request, res: Response) => {
+  const { language } = req.body as { language: string };
+  if (!language || !['ko', 'ja'].includes(language)) {
+    res.status(400).json({ error: 'language must be "ko" or "ja"' });
+    return;
+  }
+  await setLanguage(language);
+  res.json({ language });
 });
 
 export default router;

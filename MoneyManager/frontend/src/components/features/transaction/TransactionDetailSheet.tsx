@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { deleteTransaction } from '@/lib/api';
 import { Transaction } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // ─── Props 타입 ────────────────────────────────────────────────
 interface TransactionDetailSheetProps {
@@ -10,13 +11,6 @@ interface TransactionDetailSheetProps {
   onClose:   () => void;
   onEdit:    (tx: Transaction) => void; // 수정 버튼 → MainApp에서 폼 열기
   onDeleted: () => void;                // 삭제 완료 → 부모에서 목록 갱신
-}
-
-// ─── 날짜 헤더 포맷 ────────────────────────────────────────────
-function formatDateHeader(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return `${m}월 ${d}일 (${days[new Date(y, m - 1, d).getDay()]})`;
 }
 
 function formatYen(amount: number): string {
@@ -30,6 +24,7 @@ function formatYen(amount: number): string {
 export default function TransactionDetailSheet({
   transaction, onClose, onEdit, onDeleted,
 }: TransactionDetailSheetProps) {
+  const { t, formatDateHeader } = useLanguage();
 
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -61,7 +56,7 @@ export default function TransactionDetailSheet({
       onClose();
       onDeleted();
     } catch {
-      setDeleteError('삭제에 실패했습니다. 다시 시도해 주세요.');
+      setDeleteError(t('txDeleteError'));
     } finally {
       setDeleteLoading(false);
     }
@@ -98,7 +93,7 @@ export default function TransactionDetailSheet({
             {/* 헤더 */}
             <div className="flex items-center justify-between pt-1">
               <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                거래 상세
+                {t('txDetail')}
               </h2>
               <button
                 onClick={onClose}
@@ -116,27 +111,27 @@ export default function TransactionDetailSheet({
             >
               {[
                 {
-                  label: '날짜',
+                  label: t('txDate'),
                   value: formatDateHeader(transaction.date),
                   color: 'var(--text-primary)',
                 },
                 {
-                  label: '유형',
-                  value: transaction.type === 'income' ? '수입' : '지출',
+                  label: t('txType'),
+                  value: transaction.type === 'income' ? t('income') : t('expense'),
                   color: transaction.type === 'income' ? 'var(--income)' : 'var(--expense)',
                 },
                 {
-                  label: '카테고리',
+                  label: t('txCategory'),
                   value: transaction.category,
                   color: 'var(--text-primary)',
                 },
                 {
-                  label: '금액',
+                  label: t('txAmount'),
                   value: `${transaction.type === 'income' ? '+' : '-'}${formatYen(transaction.amount)}`,
                   color: transaction.type === 'income' ? 'var(--income)' : 'var(--expense)',
                 },
                 ...(transaction.memo
-                  ? [{ label: '메모', value: transaction.memo, color: 'var(--text-secondary)' }]
+                  ? [{ label: t('txMemo'), value: transaction.memo, color: 'var(--text-secondary)' }]
                   : []),
               ].map(({ label, value, color }) => (
                 <div key={label} className="flex justify-between items-start gap-4">
@@ -161,14 +156,14 @@ export default function TransactionDetailSheet({
                 }}
                 onClick={() => { onClose(); onEdit(transaction); }}
               >
-                수정
+                {t('txEdit')}
               </button>
               <button
                 className="flex-1 py-3 rounded-xl text-sm font-bold"
                 style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
                 onClick={() => setDeleteConfirm(true)}
               >
-                삭제
+                {t('txDelete')}
               </button>
             </div>
           </div>
@@ -181,7 +176,7 @@ export default function TransactionDetailSheet({
           >
             <div className="pt-2 text-center flex flex-col gap-1">
               <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                거래를 삭제하시겠습니까?
+                {t('txDeleteConfirm')}
               </p>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {transaction.category}{' '}
@@ -205,7 +200,7 @@ export default function TransactionDetailSheet({
                 }}
                 onClick={() => { setDeleteConfirm(false); setDeleteError(''); }}
               >
-                취소
+                {t('txDeleteCancel')}
               </button>
               <button
                 className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
@@ -213,7 +208,7 @@ export default function TransactionDetailSheet({
                 disabled={deleteLoading}
                 onClick={handleDelete}
               >
-                {deleteLoading ? '삭제 중...' : '삭제'}
+                {deleteLoading ? t('txDeleting') : t('txDelete')}
               </button>
             </div>
           </div>

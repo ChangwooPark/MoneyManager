@@ -17,6 +17,20 @@ export async function updatePin(newPin: string): Promise<void> {
   await db.collection('settings').doc(SETTINGS_DOC).set({ pin: newPin }, { merge: true });
 }
 
+// ─── Language ────────────────────────────────────────────────
+// 앱 표시 언어를 app_settings 문서의 language 필드에 저장합니다.
+// 기본값: 'ko' (한국어)
+
+export async function getLanguage(): Promise<string> {
+  const doc = await db.collection('settings').doc(SETTINGS_DOC).get();
+  if (!doc.exists) return 'ko';
+  return (doc.data() as { language?: string }).language ?? 'ko';
+}
+
+export async function setLanguage(lang: string): Promise<void> {
+  await db.collection('settings').doc(SETTINGS_DOC).set({ language: lang }, { merge: true });
+}
+
 // ─── Budget ──────────────────────────────────────────────────
 
 export interface Budget {

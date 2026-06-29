@@ -86,6 +86,19 @@ export function deleteCategory(id: string): Promise<void> {
   return request<void>(`/categories/${id}`, { method: 'DELETE' });
 }
 
+// ─── Language ────────────────────────────────────────────────
+
+export function getLanguageSetting(): Promise<{ language: string }> {
+  return request<{ language: string }>('/settings/language');
+}
+
+export function setLanguageSetting(language: string): Promise<{ language: string }> {
+  return request<{ language: string }>('/settings/language', {
+    method: 'PUT',
+    body: JSON.stringify({ language }),
+  });
+}
+
 // ─── Notifications ───────────────────────────────────────────
 
 export function getNotificationSettings(): Promise<{ enabled: boolean }> {

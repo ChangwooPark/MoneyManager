@@ -8,16 +8,13 @@ import {
   getLineUsers, deleteLineUser,
 } from '@/lib/api';
 import { Category } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Lang } from '@/i18n/translations';
 
 // ─── 현재 연월 헬퍼 ──────────────────────────────────────────
 function getCurrentYearMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function getCurrentYearMonthLabel(): string {
-  const d = new Date();
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
 }
 
 // ─── 타입 정의 ───────────────────────────────────────────────
@@ -26,7 +23,7 @@ type CategoryTab = 'expense' | 'income';
 
 // 아코디언에서 한 번에 하나의 섹션만 열립니다.
 // null = 모두 닫힘
-type OpenSection = 'pin' | 'budget' | 'notification' | 'reset' | null;
+type OpenSection = 'pin' | 'budget' | 'language' | 'notification' | 'reset' | null;
 
 // 데이터 초기화 플로우: PIN 입력 → 최종 확인 버튼
 type ResetStep = 'pin' | 'confirm';
@@ -39,10 +36,10 @@ interface MoreTabProps {
 
 // ─── MoreTab 컴포넌트 ─────────────────────────────────────────
 export default function MoreTab({ onReset }: MoreTabProps) {
+  const { t, language, setLanguage, formatYearMonth } = useLanguage();
   const [view, setView] = useState<MoreView>('main');
 
   // ── 아코디언 단일 열림 ────────────────────────────────────────
-  // 하나의 string | null 값으로 관리 → 다른 섹션 열면 이전 섹션 자동 닫힘
   const [openSection, setOpenSection] = useState<OpenSection>(null);
 
   const toggleSection = (section: OpenSection) => {
@@ -99,7 +96,6 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   const [catError,   setCatError]   = useState('');
 
   // ── 섹션 전환 시 폼 상태 초기화 ──────────────────────────────
-  // 다른 섹션을 열 때 이전 섹션의 입력값·오류·성공 상태를 리셋합니다.
   useEffect(() => {
     if (openSection !== 'pin') {
       setCurrentPin(''); setNewPin(''); setConfirmPin('');
@@ -142,10 +138,10 @@ export default function MoreTab({ onReset }: MoreTabProps) {
     setCatError('');
     getCategories(catTab)
       .then(list => { if (!cancelled) setCategories(list); })
-      .catch(() => { if (!cancelled) setCatError('불러오기 실패'); })
+      .catch(() => { if (!cancelled) setCatError(t('loadError')); })
       .finally(() => { if (!cancelled) setCatLoading(false); });
     return () => { cancelled = true; };
-  }, [view, catTab]);
+  }, [view, catTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─────────────────────────────────────────────────────────────
   // PIN 변경 저장
@@ -153,9 +149,9 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   const handlePinSave = async () => {
     setPinError('');
     setPinSuccess(false);
-    if (!/^\d{4}$/.test(currentPin)) { setPinError('현재 PIN 4자리를 입력해 주세요'); return; }
-    if (!/^\d{4}$/.test(newPin))     { setPinError('새 PIN 4자리를 입력해 주세요'); return; }
-    if (newPin !== confirmPin)        { setPinError('새 PIN 확인이 일치하지 않습니다'); return; }
+    if (!/^\d{4}$/.test(currentPin)) { setPinError(t('morePinErrCurrent')); return; }
+    if (!/^\d{4}$/.test(newPin))     { setPinError(t('morePinErrNew')); return; }
+    if (newPin !== confirmPin)        { setPinError(t('morePinErrMatch')); return; }
 
     setPinLoading(true);
     try {
@@ -165,10 +161,10 @@ export default function MoreTab({ onReset }: MoreTabProps) {
         setCurrentPin(''); setNewPin(''); setConfirmPin('');
         setTimeout(() => { setPinSuccess(false); setOpenSection(null); }, 1500);
       } else {
-        setPinError('현재 PIN이 올바르지 않습니다');
+        setPinError(t('morePinErrWrong'));
       }
     } catch {
-      setPinError('저장에 실패했습니다. 다시 시도해 주세요.');
+      setPinError(t('morePinErrSave'));
     } finally {
       setPinLoading(false);
     }
@@ -182,7 +178,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
     setBudgetSuccess(false);
     const amount = Number(budgetInput);
     if (!budgetInput || isNaN(amount) || amount <= 0) {
-      setBudgetError('올바른 금액을 입력해 주세요');
+      setBudgetError(t('moreBudgetErrAmt'));
       return;
     }
 
@@ -193,7 +189,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       setBudgetSuccess(true);
       setTimeout(() => { setBudgetSuccess(false); setOpenSection(null); setBudgetInput(''); }, 1500);
     } catch {
-      setBudgetError('저장에 실패했습니다. 다시 시도해 주세요.');
+      setBudgetError(t('moreBudgetErrSave'));
     } finally {
       setBudgetLoading(false);
     }
@@ -204,18 +200,18 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   // ─────────────────────────────────────────────────────────────
   const handleResetVerifyPin = async () => {
     setResetError('');
-    if (!/^\d{4}$/.test(resetPin)) { setResetError('PIN 4자리를 입력해 주세요'); return; }
+    if (!/^\d{4}$/.test(resetPin)) { setResetError(t('moreResetErrPin')); return; }
 
     setResetLoading(true);
     try {
       const res = await verifyPin(resetPin);
       if (res.success) {
-        setResetStep('confirm'); // PIN 검증 성공 → 최종 확인 단계로
+        setResetStep('confirm');
       } else {
-        setResetError('PIN이 올바르지 않습니다');
+        setResetError(t('moreResetErrWrong'));
       }
     } catch {
-      setResetError('확인에 실패했습니다. 다시 시도해 주세요.');
+      setResetError(t('moreResetErrFail'));
     } finally {
       setResetLoading(false);
     }
@@ -230,14 +226,14 @@ export default function MoreTab({ onReset }: MoreTabProps) {
     try {
       await deleteAllTransactions();
       setResetSuccess(true);
-      onReset?.(); // 홈·달력·통계 탭 데이터 갱신
+      onReset?.();
       setTimeout(() => {
         setResetSuccess(false);
         setOpenSection(null);
       }, 2000);
     } catch {
-      setResetError('초기화에 실패했습니다. 다시 시도해 주세요.');
-      setResetStep('pin'); // 오류 시 PIN 입력 단계로 복귀
+      setResetError(t('moreResetErrExec'));
+      setResetStep('pin');
     } finally {
       setResetLoading(false);
     }
@@ -294,8 +290,8 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   // ─────────────────────────────────────────────────────────────
   const handleCatAdd = async () => {
     const name = newCatName.trim();
-    if (!name) { setCatError('카테고리 이름을 입력해 주세요'); return; }
-    if (categories.some(c => c.name === name)) { setCatError('이미 존재하는 카테고리입니다'); return; }
+    if (!name) { setCatError(t('moreCatErrName')); return; }
+    if (categories.some(c => c.name === name)) { setCatError(t('moreCatErrDup')); return; }
 
     setCatAddLoad(true);
     setCatError('');
@@ -304,7 +300,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       setCategories(prev => [...prev, cat]);
       setNewCatName('');
     } catch {
-      setCatError('추가에 실패했습니다');
+      setCatError(t('moreCatErrAdd'));
     } finally {
       setCatAddLoad(false);
     }
@@ -315,7 +311,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       await deleteCategory(id);
       setCategories(prev => prev.filter(c => c.id !== id));
     } catch {
-      setCatError('삭제에 실패했습니다');
+      setCatError(t('moreCatErrDelete'));
     }
   };
 
@@ -335,10 +331,10 @@ export default function MoreTab({ onReset }: MoreTabProps) {
             className="text-sm font-medium"
             style={{ color: 'var(--accent)' }}
           >
-            ← 더보기
+            {t('moreCatBack')}
           </button>
           <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-            카테고리 관리
+            {t('moreCat')}
           </h2>
         </div>
 
@@ -357,7 +353,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
                   : '2px solid transparent',
               }}
             >
-              {tab === 'expense' ? '지출' : '수입'}
+              {tab === 'expense' ? t('expense') : t('income')}
             </button>
           ))}
         </div>
@@ -365,13 +361,13 @@ export default function MoreTab({ onReset }: MoreTabProps) {
         <div className="px-4 pt-4 pb-8 flex flex-col gap-4">
           {catLoading ? (
             <p className="text-sm text-center py-8" style={{ color: 'var(--text-secondary)' }}>
-              불러오는 중...
+              {t('loading')}
             </p>
           ) : (
             <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
               {categories.length === 0 ? (
                 <p className="text-sm text-center py-6" style={{ color: 'var(--text-secondary)' }}>
-                  카테고리가 없습니다
+                  {t('moreCatNone')}
                 </p>
               ) : (
                 categories.map((cat, i) => (
@@ -386,7 +382,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
                         className="text-xs px-3 py-1 rounded-lg border"
                         style={{ color: 'var(--expense)', borderColor: 'var(--expense)' }}
                       >
-                        삭제
+                        {t('moreCatDelete')}
                       </button>
                     </div>
                   </div>
@@ -401,7 +397,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
               value={newCatName}
               onChange={e => { setNewCatName(e.target.value); setCatError(''); }}
               onKeyDown={e => e.key === 'Enter' && handleCatAdd()}
-              placeholder="새 카테고리 이름 입력"
+              placeholder={t('moreCatPlaceholder')}
               className="flex-1 px-4 py-3 rounded-xl text-sm outline-none"
               style={{
                 backgroundColor: 'var(--bg-card)',
@@ -415,7 +411,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
               className="px-4 py-3 rounded-xl text-sm font-semibold disabled:opacity-50"
               style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
             >
-              {catAddLoad ? '...' : '추가'}
+              {catAddLoad ? '...' : t('moreCatAdd')}
             </button>
           </div>
 
@@ -426,6 +422,12 @@ export default function MoreTab({ onReset }: MoreTabProps) {
       </div>
     );
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // 현재 연월 레이블 (언어에 따라 포맷 변경)
+  // ─────────────────────────────────────────────────────────────
+  const [ym_year, ym_month] = yearMonth.split('-');
+  const yearMonthLabel = formatYearMonth(ym_year, ym_month);
 
   // ─────────────────────────────────────────────────────────────
   // 메인 메뉴 화면
@@ -442,7 +444,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
           <div className="flex items-center gap-3">
             <span>🔐</span>
             <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              PIN 번호 변경
+              {t('morePin')}
             </span>
           </div>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -454,9 +456,9 @@ export default function MoreTab({ onReset }: MoreTabProps) {
           <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
             <div className="pt-3 flex flex-col gap-2">
               {([
-                { label: '현재 PIN',    value: currentPin, set: setCurrentPin },
-                { label: '새 PIN',      value: newPin,     set: setNewPin },
-                { label: '새 PIN 확인', value: confirmPin, set: setConfirmPin },
+                { label: t('morePinCurrent'), value: currentPin, set: setCurrentPin },
+                { label: t('morePinNew'),     value: newPin,     set: setNewPin },
+                { label: t('morePinConfirm'), value: confirmPin, set: setConfirmPin },
               ] as const).map(({ label, value, set }) => (
                 <div key={label} className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</label>
@@ -479,7 +481,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
             </div>
 
             {pinError   && <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>{pinError}</p>}
-            {pinSuccess && <p className="text-xs text-center" style={{ color: 'var(--income)' }}>PIN이 변경되었습니다 ✓</p>}
+            {pinSuccess && <p className="text-xs text-center" style={{ color: 'var(--income)' }}>{t('morePinSuccess')}</p>}
 
             <button
               onClick={handlePinSave}
@@ -487,7 +489,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
               className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-50"
               style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
             >
-              {pinLoading ? '저장 중...' : '변경 저장'}
+              {pinLoading ? t('formSaving') : t('morePinSave')}
             </button>
           </div>
         )}
@@ -503,11 +505,11 @@ export default function MoreTab({ onReset }: MoreTabProps) {
             <span>💰</span>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                예산 설정 ({getCurrentYearMonthLabel()})
+                {t('moreBudget')} ({yearMonthLabel})
               </span>
               {currentBudget !== null && (
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  현재: ¥{currentBudget.toLocaleString('ja-JP')}
+                  {t('moreCurrent')}: ¥{currentBudget.toLocaleString('ja-JP')}
                 </span>
               )}
             </div>
@@ -520,13 +522,13 @@ export default function MoreTab({ onReset }: MoreTabProps) {
         {openSection === 'budget' && (
           <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
             <div className="pt-3 flex flex-col gap-1">
-              <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>목표 금액 (¥)</label>
+              <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('moreBudgetTarget')}</label>
               <input
                 type="text"
                 inputMode="numeric"
                 value={budgetInput}
                 onChange={e => setBudgetInput(e.target.value.replace(/\D/g, ''))}
-                placeholder={currentBudget !== null ? String(currentBudget) : '예: 300000'}
+                placeholder={currentBudget !== null ? String(currentBudget) : '300000'}
                 className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
                 style={{
                   backgroundColor: 'var(--bg-secondary)',
@@ -537,7 +539,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
             </div>
 
             {budgetError   && <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>{budgetError}</p>}
-            {budgetSuccess && <p className="text-xs text-center" style={{ color: 'var(--income)' }}>저장되었습니다 ✓</p>}
+            {budgetSuccess && <p className="text-xs text-center" style={{ color: 'var(--income)' }}>{t('moreBudgetSuccess')}</p>}
 
             <button
               onClick={handleBudgetSave}
@@ -545,7 +547,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
               className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-50"
               style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
             >
-              {budgetLoading ? '저장 중...' : '저장'}
+              {budgetLoading ? t('formSaving') : t('moreBudgetSave')}
             </button>
           </div>
         )}
@@ -560,13 +562,55 @@ export default function MoreTab({ onReset }: MoreTabProps) {
         <div className="flex items-center gap-3">
           <span>📂</span>
           <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            카테고리 관리
+            {t('moreCat')}
           </span>
         </div>
         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>›</span>
       </button>
 
-      {/* ── 4. LINE 알림 ─────────────────────────────────────── */}
+      {/* ── 4. 언어 설정 ─────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
+        <button
+          className="w-full flex items-center justify-between px-4 py-4"
+          onClick={() => toggleSection('language')}
+        >
+          <div className="flex items-center gap-3">
+            <span>🌐</span>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {t('moreLang')}
+              </span>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                {language === 'ko' ? t('moreLangKo') : t('moreLangJa')}
+              </span>
+            </div>
+          </div>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {openSection === 'language' ? '∧' : '∨'}
+          </span>
+        </button>
+
+        {openSection === 'language' && (
+          <div className="px-4 pb-4 flex gap-2 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+            {(['ko', 'ja'] as Lang[]).map(lang => (
+              <button
+                key={lang}
+                onClick={() => setLanguage(lang)}
+                className="flex-1 py-3 rounded-xl text-sm font-bold border transition-all"
+                style={{
+                  backgroundColor: language === lang ? 'var(--accent)' : 'transparent',
+                  color: language === lang ? '#fff' : 'var(--text-secondary)',
+                  borderColor: language === lang ? 'var(--accent)' : 'var(--border)',
+                }}
+              >
+                {lang === 'ko' ? `🇰🇷 ${t('moreLangKo')}` : `🇯🇵 ${t('moreLangJa')}`}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── 5. LINE 알림 ─────────────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
         <button
           className="w-full flex items-center justify-between px-4 py-4"
@@ -576,10 +620,10 @@ export default function MoreTab({ onReset }: MoreTabProps) {
             <span>🔔</span>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                LINE 알림
+                {t('moreLine')}
               </span>
               <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                {notifEnabled ? '켜짐' : '꺼짐'}
+                {notifEnabled ? t('moreLineOn') : t('moreLineOff')}
               </span>
             </div>
           </div>
@@ -594,11 +638,11 @@ export default function MoreTab({ onReset }: MoreTabProps) {
             {/* 수신자 목록 */}
             <div className="pt-3 flex flex-col gap-1">
               <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                수신자 ({lineUsers.length}명)
+                {t('moreLineRecipients')} ({lineUsers.length}{t('statsCountUnit')})
               </p>
               {lineUsers.length === 0 ? (
                 <p className="text-xs py-2" style={{ color: 'var(--text-secondary)' }}>
-                  등록된 수신자가 없습니다
+                  {t('moreLineNone')}
                 </p>
               ) : (
                 lineUsers.map(user => (
@@ -612,27 +656,27 @@ export default function MoreTab({ onReset }: MoreTabProps) {
                       className="text-xs px-2 py-0.5 rounded border disabled:opacity-50"
                       style={{ color: 'var(--expense)', borderColor: 'var(--expense)' }}
                     >
-                      삭제
+                      {t('moreLineDelete')}
                     </button>
                   </div>
                 ))
               )}
               <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                파트너 추가: 봇 친구 추가 후 아무 메시지 전송 시 자동 등록
+                {t('moreLineAddHint')}
               </p>
             </div>
 
             {/* ON/OFF 토글 행 */}
             <div className="flex items-center justify-between">
               <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                거래 등록 시 LINE 알림
+                {t('moreLineTxNotif')}
               </span>
               <button
                 onClick={handleNotifToggle}
                 disabled={notifLoading}
                 className="relative shrink-0 w-12 h-6 p-0 rounded-full transition-colors duration-200 disabled:opacity-50"
                 style={{ backgroundColor: notifEnabled ? 'var(--accent)' : 'var(--border)' }}
-                aria-label={notifEnabled ? '알림 끄기' : '알림 켜기'}
+                aria-label={notifEnabled ? t('moreLineToggleOn') : t('moreLineToggleOff')}
               >
                 {/* p-0 필수 — <button> 기본 padding이 absolute 기준점에 영향을 줌 */}
                 {/* left-0.5(2px) 명시 + ON 시 translateX(24px) → 우측 끝 2+20+24=46px (48px 이내) */}
@@ -650,20 +694,20 @@ export default function MoreTab({ onReset }: MoreTabProps) {
               className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-50"
               style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
             >
-              {testSending ? '발송 중...' : '테스트 메시지 발송'}
+              {testSending ? t('moreLineTesting') : t('moreLineTest')}
             </button>
 
             {testResult === 'sent'  && (
-              <p className="text-xs text-center" style={{ color: 'var(--income)' }}>발송되었습니다 ✓</p>
+              <p className="text-xs text-center" style={{ color: 'var(--income)' }}>{t('moreLineTestSent')}</p>
             )}
             {testResult === 'error' && (
-              <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>발송에 실패했습니다</p>
+              <p className="text-xs text-center" style={{ color: 'var(--expense)' }}>{t('moreLineTestError')}</p>
             )}
           </div>
         )}
       </div>
 
-      {/* ── 5. 데이터 초기화 ─────────────────────────────────── */}
+      {/* ── 6. 데이터 초기화 ─────────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
         <button
           className="w-full flex items-center justify-between px-4 py-4"
@@ -672,7 +716,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
           <div className="flex items-center gap-3">
             <span>🗑️</span>
             <span className="text-sm font-medium" style={{ color: 'var(--expense)' }}>
-              데이터 초기화
+              {t('moreReset')}
             </span>
           </div>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -684,16 +728,14 @@ export default function MoreTab({ onReset }: MoreTabProps) {
           <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
 
             {resetSuccess ? (
-              /* 초기화 완료 메시지 */
               <p className="text-sm text-center py-4" style={{ color: 'var(--income)' }}>
-                초기화가 완료되었습니다 ✓
+                {t('moreResetDone')}
               </p>
 
             ) : resetStep === 'pin' ? (
-              /* Step 1: PIN 입력 */
               <>
                 <p className="text-xs pt-3" style={{ color: 'var(--text-secondary)' }}>
-                  모든 거래 내역이 삭제됩니다. 계속하려면 PIN을 입력해 주세요.
+                  {t('moreResetWarning')}
                 </p>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>PIN</label>
@@ -723,18 +765,17 @@ export default function MoreTab({ onReset }: MoreTabProps) {
                   className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-50"
                   style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
                 >
-                  {resetLoading ? '확인 중...' : '확인'}
+                  {resetLoading ? t('moreResetChecking') : t('moreResetCheck')}
                 </button>
               </>
 
             ) : (
-              /* Step 2: 최종 확인 */
               <>
                 <p className="text-sm pt-3 text-center font-semibold" style={{ color: 'var(--expense)' }}>
-                  ⚠️ 모든 거래 내역이 영구 삭제됩니다
+                  {t('moreResetFinalW')}
                 </p>
                 <p className="text-xs text-center" style={{ color: 'var(--text-secondary)' }}>
-                  이 작업은 되돌릴 수 없습니다.
+                  {t('moreResetFinalS')}
                 </p>
 
                 {resetError && (
@@ -751,7 +792,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
                       backgroundColor: 'transparent',
                     }}
                   >
-                    취소
+                    {t('moreResetCancel')}
                   </button>
                   <button
                     onClick={handleResetConfirm}
@@ -759,7 +800,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
                     className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
                     style={{ backgroundColor: 'var(--expense)', color: '#fff' }}
                   >
-                    {resetLoading ? '삭제 중...' : '초기화'}
+                    {resetLoading ? t('moreResetExecing') : t('moreResetExec')}
                   </button>
                 </div>
               </>
