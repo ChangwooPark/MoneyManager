@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createTransaction, updateTransaction, getCategories } from '@/lib/api';
 import { Transaction } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // API 조회 실패 시 사용할 기본 카테고리 목록
 const FALLBACK_CATEGORIES: Record<'income' | 'expense', string[]> = {
@@ -41,6 +42,7 @@ function formatYen(value: number): string {
 // 화면 하단에서 슬라이드업 되는 방식으로 표시됩니다.
 // 핸들 바를 아래로 드래그하면 닫히고, 카테고리 칩으로 분류를 선택합니다.
 export default function TransactionForm({ onClose, onSaved, initialData }: TransactionFormProps) {
+  const { t } = useLanguage();
   // initialData가 있으면 수정 모드
   const isEdit = !!initialData?.id;
 
@@ -105,8 +107,8 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
   // ── 저장 처리 함수 ────────────────────────────────────────────
   const handleSave = async () => {
     // 유효성 검사: 필수 항목 확인
-    if (!category)                         { setError('카테고리를 선택해 주세요'); return; }
-    if (!amount || Number(amount) <= 0)    { setError('금액을 입력해 주세요'); return; }
+    if (!category)                         { setError(t('errCategory')); return; }
+    if (!amount || Number(amount) <= 0)    { setError(t('errAmount')); return; }
 
     setLoading(true);
     setError('');
@@ -131,7 +133,7 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
       onSaved();
       onClose();
     } catch {
-      setError('저장에 실패했습니다. 다시 시도해 주세요.');
+      setError(t('errSave'));
     } finally {
       setLoading(false);
     }
@@ -227,7 +229,7 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
           {/* ── 헤더: 제목 + 닫기 버튼 ─────────────────────── */}
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-              {isEdit ? '내역 수정' : '내역 추가'}
+              {isEdit ? t('formTitleEdit') : t('formTitleAdd')}
             </h2>
             <button
               onClick={onClose}
@@ -240,20 +242,19 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
 
           {/* ── 수입 / 지출 토글 ──────────────────────────── */}
           <div className="flex rounded-xl p-1" style={{ backgroundColor: 'var(--bg-card)' }}>
-            {(['expense', 'income'] as const).map((t) => (
+            {(['expense', 'income'] as const).map((txType) => (
               <button
-                key={t}
-                onClick={() => handleTypeChange(t)}
+                key={txType}
+                onClick={() => handleTypeChange(txType)}
                 className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{
-                  // 선택된 타입은 배경색과 텍스트색 강조
-                  backgroundColor: type === t
-                    ? (t === 'income' ? 'var(--income)' : 'var(--expense)')
+                  backgroundColor: type === txType
+                    ? (txType === 'income' ? 'var(--income)' : 'var(--expense)')
                     : 'transparent',
-                  color: type === t ? '#000' : 'var(--text-secondary)',
+                  color: type === txType ? '#000' : 'var(--text-secondary)',
                 }}
               >
-                {t === 'expense' ? '지출' : '수입'}
+                {txType === 'expense' ? t('expense') : t('income')}
               </button>
             ))}
           </div>
@@ -261,7 +262,7 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
           {/* ── 날짜 입력 ─────────────────────────────────── */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              날짜
+              {t('formDate')}
             </label>
             <input
               type="date"
@@ -283,7 +284,7 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
               선택된 칩은 accentColor로 강조 표시 */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              카테고리
+              {t('formCategory')}
             </label>
             <div className="flex flex-wrap gap-2">
               {categories.map((cat) => (
@@ -306,7 +307,7 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
           {/* ── 금액 입력 ─────────────────────────────────── */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              금액
+              {t('formAmount')}
             </label>
             <div className="relative">
               {/* 엔화 기호(¥)를 입력창 왼쪽에 표시 */}
@@ -344,14 +345,14 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
           {/* ── 메모 입력 (선택) ─────────────────────────── */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              메모{' '}
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>(선택)</span>
+              {t('formMemo')}{' '}
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>{t('formMemoOpt')}</span>
             </label>
             <input
               type="text"
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
-              placeholder="예: 친구와 점심, 롯데마트"
+              placeholder={t('formMemoPlaceholder')}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none placeholder-gray-600"
               style={{
                 backgroundColor: 'var(--bg-card)',
@@ -375,7 +376,7 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
             className="w-full py-4 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
             style={{ backgroundColor: accentColor, color: '#000' }}
           >
-            {loading ? '저장 중...' : isEdit ? '수정 저장' : '저장'}
+            {loading ? t('formSaving') : isEdit ? t('formSaveEdit') : t('formSave')}
           </button>
 
         </div>
