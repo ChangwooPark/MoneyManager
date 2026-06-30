@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 // ─── Claude Vision API 응답 타입 ──────────────────────────────
 export interface ReceiptScanResult {
   amount: number;  // 합계 금액 (엔화, 파싱 실패 시 0)
-  memo:   string;  // 가게명 또는 품목 (파싱 실패 시 빈 문자열)
+  memo:   string;  // 구매 품목 리스트 "상품명×수량: 금액円, ..." (파싱 실패 시 빈 문자열)
 }
 
 // MIME 타입 검증 — Claude API가 허용하는 이미지 포맷만 통과
@@ -34,8 +34,9 @@ export async function scanReceipt(
 
   const response = await client.messages.create({
     // Haiku: 이미지 OCR + 구조화 추출에 충분하며 Sonnet 대비 저렴
+    // max_tokens: 품목 리스트가 길어질 수 있으므로 1024로 증가
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 256,
+    max_tokens: 1024,
     messages: [
       {
         role: 'user',
@@ -50,13 +51,17 @@ export async function scanReceipt(
           },
           {
             type: 'text',
-            text: `この領収書・レシートを読み取り、以下のJSON形式のみで返してください。
+            text: `このレシートを読み取り、以下のJSON形式のみで返してください。
 説明文や追加テキストは不要です。JSONのみ出力してください。
 
-{"amount": <合計金額(数字のみ)>, "memo": "<店名または品目>"}
+{"amount": <合計金額(数字のみ)>, "memo": "<品目リスト>"}
 
-合計金額が読み取れない場合は amount に 0、
-店名・品目が読み取れない場合は memo に "" を設定してください。`,
+品目リストの形式:
+- 購入した商品を「商品名×数量: 金額円」の形式で列挙
+- 複数商品はカンマ区切り
+- 例: "卵×1: 500円, ラーメン×1: 300円, のり×1: 568円"
+- 商品名が読み取れない場合は "" を設定
+- 合計金額が読み取れない場合は amount に 0 を設定`,
           },
         ],
       },
@@ -76,8 +81,8 @@ export async function scanReceipt(
 // 1차: JSON.parse 시도
 // 2차: 정규식으로 각 필드 추출 (Claude가 JSON 외 설명을 붙인 경우 대응)
 function parseReceiptResponse(text: string): ReceiptScanResult {
-  // 1차: JSON 블록 추출 시도 (```json ... ``` 또는 순수 JSON)
-  const jsonMatch = text.match(/\{[\s\S]*?\}/);
+  // 1차: JSON 블록 추출 시도 — 탐욕적 매칭으로 중첩/긴 memo도 올바르게 캡처
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]) as { amount?: unknown; memo?: unknown };
