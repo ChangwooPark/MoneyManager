@@ -412,12 +412,13 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
               {t('formMemo')}{' '}
               <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>{t('formMemoOpt')}</span>
             </label>
-            <input
-              type="text"
+            {/* textarea: 줄바꿈 지원 — 영수증 스캔 품목 리스트 표시에 사용 */}
+            <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               placeholder={t('formMemoPlaceholder')}
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none placeholder-gray-600"
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none placeholder-gray-600 resize-none"
               style={{
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-primary)',
