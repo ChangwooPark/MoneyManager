@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createTransaction, updateTransaction, getCategories } from '@/lib/api';
+import { createTransaction, updateTransaction, getCategories, scanReceiptImage } from '@/lib/api';
 import { Transaction } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -52,8 +52,10 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
   const [category, setCategory] = useState(initialData?.category ?? '');
   const [amount, setAmount]     = useState(initialData?.amount ? String(initialData.amount) : '');
   const [memo, setMemo]         = useState(initialData?.memo ?? '');
-  const [loading, setLoading]   = useState(false);  // 저장 중 여부
-  const [error, setError]       = useState('');     // 유효성 검사 오류 메시지
+  const [loading, setLoading]     = useState(false);  // 저장 중 여부
+  const [error, setError]         = useState('');     // 유효성 검사 오류 메시지
+  const [scanning, setScanning]   = useState(false);  // 영수증 분석 중 여부
+  const [scanMsg, setScanMsg]     = useState('');     // 스캔 결과 안내 메시지
 
   // ── API 카테고리 상태 ─────────────────────────────────────────
   // 초기값: 하드코딩 폴백 → API 응답 도착 시 교체 (로딩 중 빈 화면 방지)
@@ -69,6 +71,33 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
       })
       .catch(() => {}); // 실패 시 폴백 유지
   }, []);
+
+  // ── 영수증 스캔 — 숨겨진 파일 인풋 ref ──────────────────────
+  // 버튼 클릭 시 fileInputRef.current.click()으로 카메라/갤러리 열기
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── 영수증 이미지 선택 → 백엔드 분석 → 필드 자동 채움 ───────
+  const handleReceiptScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 같은 파일을 재선택해도 onChange가 발동되도록 값 초기화
+    e.target.value = '';
+
+    setScanning(true);
+    setScanMsg('');
+
+    try {
+      const result = await scanReceiptImage(file);
+      if (result.amount > 0) setAmount(String(result.amount));
+      if (result.memo)       setMemo(result.memo);
+      setScanMsg(t('receiptScanFilled'));
+    } catch {
+      setScanMsg(t('receiptScanError'));
+    } finally {
+      setScanning(false);
+    }
+  };
 
   // ── 바텀시트 ref ─────────────────────────────────────────────
   // 배경 스크롤 차단 시 시트 내부 터치는 허용하기 위해 필요
@@ -259,6 +288,41 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
             ))}
           </div>
 
+          {/* ── 영수증 스캔 버튼 + 숨겨진 파일 인풋 ──────── */}
+          {/* capture="environment": 후면 카메라 우선 (갤러리 선택도 가능) */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleReceiptScan}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={scanning}
+            className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+            style={{
+              border: '1.5px dashed var(--border)',
+              color: scanning ? 'var(--text-secondary)' : accentColor,
+              backgroundColor: 'transparent',
+            }}
+          >
+            <span>{scanning ? '📷' : '📷'}</span>
+            {scanning ? t('receiptScanning') : t('receiptScanBtn')}
+          </button>
+
+          {/* 스캔 결과 메시지 (성공/실패) */}
+          {scanMsg && (
+            <p
+              className="text-xs text-center -mt-2"
+              style={{ color: scanMsg === t('receiptScanError') ? 'var(--expense)' : 'var(--income)' }}
+            >
+              {scanMsg}
+            </p>
+          )}
+
           {/* ── 날짜 입력 ─────────────────────────────────── */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
@@ -348,12 +412,13 @@ export default function TransactionForm({ onClose, onSaved, initialData }: Trans
               {t('formMemo')}{' '}
               <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>{t('formMemoOpt')}</span>
             </label>
-            <input
-              type="text"
+            {/* textarea: 줄바꿈 지원 — 영수증 스캔 품목 리스트 표시에 사용 */}
+            <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               placeholder={t('formMemoPlaceholder')}
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none placeholder-gray-600"
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none placeholder-gray-600 resize-none"
               style={{
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-primary)',

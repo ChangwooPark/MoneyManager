@@ -131,14 +131,18 @@ export default function TransactionDetailSheet({
                   color: transaction.type === 'income' ? 'var(--income)' : 'var(--expense)',
                 },
                 ...(transaction.memo
-                  ? [{ label: t('txMemo'), value: transaction.memo, color: 'var(--text-secondary)' }]
+                  ? [{ label: t('txMemo'), value: transaction.memo, color: 'var(--text-secondary)', preWrap: true }]
                   : []),
-              ].map(({ label, value, color }) => (
+              ].map(({ label, value, color, preWrap }) => (
                 <div key={label} className="flex justify-between items-start gap-4">
                   <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)' }}>
                     {label}
                   </span>
-                  <span className="text-sm font-medium text-right" style={{ color }}>
+                  {/* preWrap: 영수증 스캔 품목 리스트처럼 \n이 포함된 메모를 줄바꿈으로 표시 */}
+                  <span
+                    className="text-sm font-medium text-right"
+                    style={{ color, whiteSpace: preWrap ? 'pre-wrap' : undefined }}
+                  >
                     {value}
                   </span>
                 </div>

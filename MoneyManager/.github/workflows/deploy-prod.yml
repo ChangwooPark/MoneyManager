@@ -1,0 +1,99 @@
+name: Deploy (Production)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ─── 백엔드: Cloud Run 배포 ──────────────────────────────────────
+  # MoneyManager/ 폴더의 Express 서버를 Docker 이미지로 빌드하여
+  # GCP Artifact Registry에 푸시하고 Cloud Run에 배포합니다.
+  deploy-backend:
+    name: Deploy Backend to Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/money-manager/account-book:${{ github.sha }}
+          docker build -t $IMAGE MoneyManager/
+          docker push $IMAGE
+
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/money-manager/account-book:${{ github.sha }}
+          gcloud run deploy money-manager \
+            --image=$IMAGE \
+            --region=asia-northeast3 \
+            --platform=managed \
+            --allow-unauthenticated \
+            --max-instances=1 \
+            --port=8080 \
+            --set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+
+  # ─── 프론트엔드: Vercel 배포 ─────────────────────────────────────
+  # MoneyManager/frontend/ 폴더의 Next.js 앱을 Vercel에 배포합니다.
+  # VERCEL_TOKEN: Vercel 계정 설정에서 발급한 액세스 토큰 (GitHub Secret)
+  # VERCEL_ORG_ID / VERCEL_PROJECT_ID: .vercel/project.json 에서 확인한 값
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      # vercel pull: Vercel 프로젝트 설정 및 환경변수를 로컬로 가져옴
+      - name: Pull Vercel project settings
+        working-directory: MoneyManager/frontend
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: team_C6F9p19SH8pOyJxy7x8OtS82
+          VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
+
+      # vercel build: Next.js 프로덕션 빌드 실행
+      # NEXT_PUBLIC_API_URL을 명시적으로 주입 —
+      # Vercel에 암호화 타입으로 저장된 경우 vercel pull이 빈 문자열을 반환하므로
+      # 여기서 직접 값을 넣어 빌드 시 올바른 백엔드 URL이 번들에 포함되게 함
+      - name: Build project
+        working-directory: MoneyManager/frontend
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: team_C6F9p19SH8pOyJxy7x8OtS82
+          VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
+          NEXT_PUBLIC_API_URL: https://money-manager-1094294666571.asia-northeast3.run.app
+
+      # vercel deploy --prebuilt: 빌드 결과물을 Vercel Production에 배포
+      # alias set: frontend-changwoo-park.vercel.app을 항상 최신 운영 배포에 연결
+      - name: Deploy to Vercel Production
+        working-directory: MoneyManager/frontend
+        run: |
+          DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          vercel alias set $DEPLOY_URL frontend-changwoo-park.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: team_C6F9p19SH8pOyJxy7x8OtS82
+          VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g

@@ -15,7 +15,9 @@ A full-stack household budget web service — designed, built, and deployed solo
 | 🏠 Home Tab | Monthly transaction list grouped by date, daily subtotals and net balance; tap any entry for details/edit/delete |
 | 📅 Calendar Tab | Monthly calendar with income/expense visualization; tap a date for full breakdown and edit/delete support |
 | 📊 Stats Tab | Category-based spending/income breakdown with budget progress bar; tap any entry for details/edit/delete |
-| ⚙️ More Tab | PIN change, monthly budget setting, category management, LINE notification settings |
+| ⚙️ More Tab | PIN change, monthly budget setting, category management, language settings, LINE notification settings |
+| 🌐 Multilingual | Instant Korean ↔ Japanese switching; language preference saved in Firestore (persists across sessions) |
+| 📷 Receipt Scan | Photo a receipt during transaction entry → Claude Vision AI auto-fills amount and memo |
 | 🔔 LINE Alerts | Real-time LINE Messaging API notifications on transaction entry (Multicast support, partner auto-registration via Webhook) |
 | 🗑️ Data Reset | Full transaction delete after PIN re-authentication (2-step confirmation to prevent mistakes) |
 
@@ -35,8 +37,11 @@ A full-stack household budget web service — designed, built, and deployed solo
 - Google Cloud Firestore (Native Mode)
 - Artifact Registry · Secret Manager · IAM
 
+**AI**
+- Claude Haiku (Anthropic) — Receipt Vision OCR
+
 **Dev Tools**
-- Playwright (454 E2E tests)
+- Playwright (E2E tests)
 - GitHub Actions (CI/CD auto-deploy)
 
 ---
@@ -52,8 +57,9 @@ Next.js Frontend (Vercel)
      ▼
 Express Backend (Cloud Run)
      │
-     ▼
-Firestore          LINE Messaging API
+     ├── Firestore
+     ├── LINE Messaging API
+     └── Claude Vision API (Receipt Scan)
 ```
 
 ---
