@@ -37,6 +37,9 @@ A full-stack household budget web service — designed, built, and deployed solo
 - Google Cloud Firestore (Native Mode)
 - Artifact Registry · Secret Manager · IAM
 
+**AI**
+- Claude Haiku (Anthropic) — Receipt Vision OCR
+
 **Dev Tools**
 - Playwright (E2E tests)
 - GitHub Actions (CI/CD auto-deploy)
@@ -54,8 +57,9 @@ Next.js Frontend (Vercel)
      ▼
 Express Backend (Cloud Run)
      │
-     ▼
-Firestore          LINE Messaging API
+     ├── Firestore
+     ├── LINE Messaging API
+     └── Claude Vision API (Receipt Scan)
 ```
 
 ---
