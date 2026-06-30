@@ -4,6 +4,7 @@ import settingsRouter from './routes/settings';
 import budgetsRouter from './routes/budgets';
 import categoriesRouter from './routes/categories';
 import notificationsRouter from './routes/notifications';
+import receiptsRouter from './routes/receipts';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -35,6 +36,7 @@ app.use('/settings', settingsRouter);
 app.use('/budgets', budgetsRouter);
 app.use('/categories', categoriesRouter);
 app.use('/notifications', notificationsRouter);
+app.use('/receipts', receiptsRouter);
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

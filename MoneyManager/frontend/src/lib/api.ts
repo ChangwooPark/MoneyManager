@@ -86,6 +86,32 @@ export function deleteCategory(id: string): Promise<void> {
   return request<void>(`/categories/${id}`, { method: 'DELETE' });
 }
 
+// ─── Receipts ────────────────────────────────────────────────
+
+export interface ReceiptScanResult {
+  amount: number;
+  memo:   string;
+}
+
+export async function scanReceiptImage(file: File): Promise<ReceiptScanResult> {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const res = await fetch(`${BASE_URL}/receipts/scan`, {
+    method: 'POST',
+    body: formData,
+    // Content-Type 헤더를 직접 지정하지 않음 —
+    // FormData 사용 시 브라우저가 boundary 포함 multipart/form-data를 자동으로 설정
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error((error as { error?: string }).error ?? 'scan failed');
+  }
+
+  return res.json() as Promise<ReceiptScanResult>;
+}
+
 // ─── Language ────────────────────────────────────────────────
 
 export function getLanguageSetting(): Promise<{ language: string }> {

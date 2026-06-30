@@ -54,6 +54,12 @@ export const translations = {
     statsColAmount:    '금액',
     statsNoTx:         '거래 내역이 없습니다.',
 
+    // ── 영수증 스캔 ───────────────────────────────────────────
+    receiptScanBtn:     '영수증 스캔',
+    receiptScanning:    '분석 중...',
+    receiptScanError:   '영수증 인식에 실패했습니다.',
+    receiptScanFilled:  '영수증에서 자동 입력됐습니다. 내용을 확인해 주세요.',
+
     // ── 거래 입력 폼 ──────────────────────────────────────────
     formTitleAdd:       '내역 추가',
     formTitleEdit:      '내역 수정',
@@ -200,6 +206,12 @@ export const translations = {
     statsColCount:     '件数',
     statsColAmount:    '金額',
     statsNoTx:         '取引はありません。',
+
+    // ── 영수증 스캔 ───────────────────────────────────────────
+    receiptScanBtn:     '領収書スキャン',
+    receiptScanning:    '分析中...',
+    receiptScanError:   '領収書の認識に失敗しました。',
+    receiptScanFilled:  '領収書から自動入力しました。内容をご確認ください。',
 
     // ── 거래 입력 폼 ──────────────────────────────────────────
     formTitleAdd:       '取引を追加',
