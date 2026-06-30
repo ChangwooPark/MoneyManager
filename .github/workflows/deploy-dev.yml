@@ -45,6 +45,7 @@ jobs:
             --allow-unauthenticated \
             --max-instances=1 \
             --port=8080 \
+            --update-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest \
             --project=${{ secrets.GCP_DEV_PROJECT_ID }}
 
   # ─── 프론트엔드: Vercel 개발 고정 URL 배포 ──────────────────────
