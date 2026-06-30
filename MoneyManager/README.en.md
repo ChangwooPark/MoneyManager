@@ -17,6 +17,7 @@ A full-stack household budget web service — designed, built, and deployed solo
 | 📊 Stats Tab | Category-based spending/income breakdown with budget progress bar; tap any entry for details/edit/delete |
 | ⚙️ More Tab | PIN change, monthly budget setting, category management, language settings, LINE notification settings |
 | 🌐 Multilingual | Instant Korean ↔ Japanese switching; language preference saved in Firestore (persists across sessions) |
+| 📷 Receipt Scan | Photo a receipt during transaction entry → Claude Vision AI auto-fills amount and memo |
 | 🔔 LINE Alerts | Real-time LINE Messaging API notifications on transaction entry (Multicast support, partner auto-registration via Webhook) |
 | 🗑️ Data Reset | Full transaction delete after PIN re-authentication (2-step confirmation to prevent mistakes) |
 

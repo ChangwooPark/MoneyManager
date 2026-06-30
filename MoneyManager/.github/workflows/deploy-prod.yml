@@ -88,9 +88,12 @@ jobs:
           NEXT_PUBLIC_API_URL: https://money-manager-1094294666571.asia-northeast3.run.app
 
       # vercel deploy --prebuilt: 빌드 결과물을 Vercel Production에 배포
+      # alias set: frontend-changwoo-park.vercel.app을 항상 최신 운영 배포에 연결
       - name: Deploy to Vercel Production
         working-directory: MoneyManager/frontend
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          vercel alias set $DEPLOY_URL frontend-changwoo-park.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: team_C6F9p19SH8pOyJxy7x8OtS82
           VERCEL_PROJECT_ID: prj_5TOJOfymglx2pWt2aQXTDc0B909g
