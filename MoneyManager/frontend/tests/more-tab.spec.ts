@@ -34,6 +34,29 @@ const CURRENT_YM = (() => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 })();
 
+// ─── Phase 20-1: 연월 헬퍼 ───────────────────────────────────
+// 테스트 코드에서도 이전/다음 달 연월 문자열을 순수 함수로 계산합니다.
+function prevMonthYM(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  if (m === 1) return `${y - 1}-12`;
+  return `${y}-${String(m - 1).padStart(2, '0')}`;
+}
+
+function nextMonthYM(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  if (m === 12) return `${y + 1}-01`;
+  return `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+
+// "YYYY-MM" → "YYYY년 M월" 포맷 (한국어)
+function formatKO(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  return `${y}년 ${m}월`;
+}
+
+const PREV_YM = prevMonthYM(CURRENT_YM);
+const NEXT_YM = nextMonthYM(CURRENT_YM);
+
 // ─── 공통 헬퍼 ────────────────────────────────────────────────
 
 async function setupApp(page: Page): Promise<void> {
@@ -441,6 +464,208 @@ test.describe('더보기 탭 — 데이터 초기화', () => {
     await page.getByRole('button', { name: '초기화', exact: true }).click();
 
     await expect(page.getByText('초기화가 완료되었습니다 ✓')).toBeVisible({ timeout: 5000 });
+  });
+
+});
+
+// ─────────────────────────────────────────────────────────────
+// Phase 20-1: 예산 연월 선택기
+// ─────────────────────────────────────────────────────────────
+//
+// 검증 항목:
+//   - 아코디언 열기 시 ‹/› 버튼과 연월 레이블이 보이는지
+//   - ‹ 클릭 → 이전 달로 이동, 해당 달 예산 API 재조회
+//   - › 클릭 → 다음 달로 이동, 해당 달 예산 API 재조회
+//   - 헤더(닫힌 상태)의 연월 레이블이 선택 연월과 동기화되는지
+//   - 예산 미설정 달에서 헤더 금액 서브텍스트가 비어 있는지
+//   - 섹션 닫기 후 재열기 시 현재 달로 리셋되는지
+//   - 연월별로 다른 예산 금액이 입력란 placeholder에 반영되는지
+//   - 선택된 달 기준으로 저장 API가 호출되는지
+
+test.describe('더보기 탭 — 예산 연월 선택기 (Phase 20-1)', () => {
+
+  // 연월별로 다른 예산을 반환하는 mock setup
+  // CURRENT_YM → 300,000 / PREV_YM → 180,000 / NEXT_YM → 예산 없음(amount:0)
+  async function setupBudgetMonthAware(page: Page): Promise<void> {
+    await page.addInitScript(() => {
+      sessionStorage.setItem('mm_verified', 'true');
+    });
+
+    await page.route('**/settings/pin/verify', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) })
+    );
+
+    // 연월별 예산 mock: URL에 포함된 yearMonth를 파싱해서 다른 금액 반환
+    await page.route('**/budgets/**', route => {
+      const url = route.request().url();
+      if (route.request().method() === 'GET') {
+        if (url.includes(PREV_YM)) {
+          return route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify({ yearMonth: PREV_YM, amount: 180000 }) });
+        }
+        if (url.includes(NEXT_YM)) {
+          // 미래 달 — 예산 미설정: 404를 반환해야 getBudget이 throw → catch → currentBudget = null
+          return route.fulfill({ status: 404, contentType: 'application/json',
+            body: JSON.stringify({ error: 'Not found' }) });
+        }
+        // 현재 달
+        return route.fulfill({ status: 200, contentType: 'application/json',
+          body: JSON.stringify({ yearMonth: CURRENT_YM, amount: 300000 }) });
+      }
+      // PUT — 저장 응답: 요청 URL에서 연월 추출해 그대로 반환
+      const ymMatch = url.match(/budgets\/(\d{4}-\d{2})/);
+      const savedYm = ymMatch ? ymMatch[1] : CURRENT_YM;
+      return route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ yearMonth: savedYm, amount: 200000 }) });
+    });
+
+    // 기타 API mock (카테고리 등 더보기 탭 초기 로드에 필요)
+    await page.route('**/categories**', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    );
+    await page.route('**/settings/notification**', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled: true }) })
+    );
+    await page.route('**/line/users**', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ users: [] }) })
+    );
+    await page.route('**/transactions**', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+    );
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+  }
+
+  async function openBudgetSection(page: Page): Promise<void> {
+    await page.getByRole('button', { name: '⋯ 더보기' }).click();
+    await expect(page.getByText('PIN 번호 변경')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /예산 설정/ }).click();
+    // 연월 선택기가 나타날 때까지 대기
+    await expect(page.getByRole('button', { name: '이전 달' })).toBeVisible({ timeout: 3000 });
+  }
+
+  test('아코디언 열기 시 ‹ › 버튼과 현재 달 레이블이 표시된다', async ({ page }) => {
+    await setupBudgetMonthAware(page);
+    await openBudgetSection(page);
+
+    // ‹ / › 버튼이 보여야 함
+    await expect(page.getByRole('button', { name: '이전 달' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '다음 달' })).toBeVisible();
+
+    // 본체의 연월 레이블이 현재 달이어야 함
+    const expectedLabel = formatKO(CURRENT_YM);
+    // 아코디언 본체 안의 연월 텍스트 확인 (헤더 제외 — 본체에만 있는 연월 선택기 레이블)
+    const monthLabels = page.locator('text=' + expectedLabel);
+    await expect(monthLabels.first()).toBeVisible();
+  });
+
+  test('‹ 클릭 시 이전 달로 이동하고 해당 달 예산이 로드된다', async ({ page }) => {
+    await setupBudgetMonthAware(page);
+    await openBudgetSection(page);
+
+    await page.getByRole('button', { name: '이전 달' }).click();
+
+    // 본체 연월 레이블이 이전 달로 바뀌어야 함
+    await expect(page.locator('text=' + formatKO(PREV_YM)).first()).toBeVisible({ timeout: 3000 });
+
+    // 헤더도 이전 달로 업데이트되어야 함
+    await expect(page.getByRole('button', { name: new RegExp(formatKO(PREV_YM)) })).toBeVisible();
+
+    // 이전 달 예산(180,000)이 입력란 placeholder에 반영되어야 함
+    await expect(page.getByRole('textbox')).toHaveAttribute('placeholder', '180000');
+  });
+
+  test('› 클릭 시 다음 달로 이동하고 해당 달 예산이 로드된다', async ({ page }) => {
+    await setupBudgetMonthAware(page);
+    await openBudgetSection(page);
+
+    await page.getByRole('button', { name: '다음 달' }).click();
+
+    // 본체 연월 레이블이 다음 달로 바뀌어야 함
+    await expect(page.locator('text=' + formatKO(NEXT_YM)).first()).toBeVisible({ timeout: 3000 });
+
+    // 다음 달은 예산 미설정(amount:0) → placeholder는 기본값 '300000'
+    await expect(page.getByRole('textbox')).toHaveAttribute('placeholder', '300000');
+  });
+
+  test('연속 탐색: ‹ 두 번 → › 두 번 클릭 시 현재 달로 복귀된다', async ({ page }) => {
+    await setupBudgetMonthAware(page);
+    await openBudgetSection(page);
+
+    await page.getByRole('button', { name: '이전 달' }).click();
+    await page.getByRole('button', { name: '이전 달' }).click();
+    await page.getByRole('button', { name: '다음 달' }).click();
+    await page.getByRole('button', { name: '다음 달' }).click();
+
+    // 현재 달로 복귀
+    await expect(page.locator('text=' + formatKO(CURRENT_YM)).first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('textbox')).toHaveAttribute('placeholder', '300000');
+  });
+
+  test('예산 미설정 달로 이동 시 헤더에 금액 서브텍스트가 없다', async ({ page }) => {
+    await setupBudgetMonthAware(page);
+    await openBudgetSection(page);
+
+    await page.getByRole('button', { name: '다음 달' }).click();
+    await expect(page.locator('text=' + formatKO(NEXT_YM)).first()).toBeVisible({ timeout: 3000 });
+
+    // "현재: ¥xxx" 형태의 서브텍스트가 없어야 함 (amount: 0은 미설정으로 처리)
+    await expect(page.locator('text=/현재: ¥/')).not.toBeVisible();
+  });
+
+  test('섹션 닫기 후 재열기 시 현재 달로 리셋된다', async ({ page }) => {
+    await setupBudgetMonthAware(page);
+    await openBudgetSection(page);
+
+    // 이전 달로 이동
+    await page.getByRole('button', { name: '이전 달' }).click();
+    await expect(page.locator('text=' + formatKO(PREV_YM)).first()).toBeVisible({ timeout: 3000 });
+
+    // 섹션 닫기
+    await page.getByRole('button', { name: /예산 설정/ }).click();
+    await expect(page.getByRole('button', { name: '이전 달' })).not.toBeVisible();
+
+    // 재열기
+    await page.getByRole('button', { name: /예산 설정/ }).click();
+    await expect(page.getByRole('button', { name: '이전 달' })).toBeVisible({ timeout: 3000 });
+
+    // 현재 달로 리셋되어야 함
+    await expect(page.locator('text=' + formatKO(CURRENT_YM)).first()).toBeVisible();
+    await expect(page.getByRole('textbox')).toHaveAttribute('placeholder', '300000');
+  });
+
+  test('선택된 달 기준으로 PUT API가 호출된다', async ({ page }) => {
+    await setupBudgetMonthAware(page);
+
+    // 저장 요청 URL을 캡처하기 위한 변수
+    let capturedUrl = '';
+    await page.route('**/budgets/**', async route => {
+      if (route.request().method() === 'PUT') {
+        capturedUrl = route.request().url();
+        return route.fulfill({ status: 200, contentType: 'application/json',
+          body: JSON.stringify({ yearMonth: PREV_YM, amount: 200000 }) });
+      }
+      // GET은 기존 응답
+      const url = route.request().url();
+      const amount = url.includes(PREV_YM) ? 180000 : 300000;
+      return route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ yearMonth: PREV_YM, amount }) });
+    });
+
+    await openBudgetSection(page);
+
+    // 이전 달로 이동 후 저장
+    await page.getByRole('button', { name: '이전 달' }).click();
+    await expect(page.locator('text=' + formatKO(PREV_YM)).first()).toBeVisible({ timeout: 3000 });
+
+    await page.getByRole('textbox').fill('200000');
+    await page.getByRole('button', { name: '저장' }).click();
+
+    await expect(page.getByText('저장되었습니다 ✓')).toBeVisible({ timeout: 5000 });
+
+    // PUT 요청 URL에 이전 달 연월이 포함되어 있어야 함
+    expect(capturedUrl).toContain(PREV_YM);
   });
 
 });

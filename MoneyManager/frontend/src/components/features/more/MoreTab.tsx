@@ -11,10 +11,25 @@ import { Category } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Lang } from '@/i18n/translations';
 
-// ─── 현재 연월 헬퍼 ──────────────────────────────────────────
+// ─── 연월 헬퍼 함수들 ────────────────────────────────────────
+// 순수 함수: 같은 입력 → 항상 같은 출력, 외부 상태를 바꾸지 않음
 function getCurrentYearMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// "YYYY-MM" 형식의 문자열을 받아 이전/다음 달 문자열을 반환합니다.
+// Date 객체 없이 문자열 연산만으로 처리 — 타임존 영향을 받지 않습니다.
+function prevMonth(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  if (m === 1) return `${y - 1}-12`;
+  return `${y}-${String(m - 1).padStart(2, '0')}`;
+}
+
+function nextMonth(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  if (m === 12) return `${y + 1}-01`;
+  return `${y}-${String(m + 1).padStart(2, '0')}`;
 }
 
 // ─── 타입 정의 ───────────────────────────────────────────────
@@ -59,12 +74,14 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   // ─────────────────────────────────────────────────────────────
   // 예산 설정 상태
   // ─────────────────────────────────────────────────────────────
-  const yearMonth = getCurrentYearMonth();
-  const [budgetInput,   setBudgetInput]   = useState('');
-  const [currentBudget, setCurrentBudget] = useState<number | null>(null);
-  const [budgetLoading, setBudgetLoading] = useState(false);
-  const [budgetError,   setBudgetError]   = useState('');
-  const [budgetSuccess, setBudgetSuccess] = useState(false);
+  // 상수 → 상태로 변경: 사용자가 ← → 로 월을 바꾸면 React가 화면을 다시 그립니다.
+  // 초기값은 "지금 이 달" — 앱을 열면 현재 월 예산이 기본으로 보입니다.
+  const [budgetYearMonth, setBudgetYearMonth] = useState(getCurrentYearMonth);
+  const [budgetInput,     setBudgetInput]     = useState('');
+  const [currentBudget,   setCurrentBudget]   = useState<number | null>(null);
+  const [budgetLoading,   setBudgetLoading]   = useState(false);
+  const [budgetError,     setBudgetError]     = useState('');
+  const [budgetSuccess,   setBudgetSuccess]   = useState(false);
 
   // ─────────────────────────────────────────────────────────────
   // 데이터 초기화 상태
@@ -103,6 +120,9 @@ export default function MoreTab({ onReset }: MoreTabProps) {
     }
     if (openSection !== 'budget') {
       setBudgetInput(''); setBudgetError(''); setBudgetSuccess(false);
+      // 섹션을 닫을 때 연월을 현재 달로 리셋합니다.
+      // 다시 열면 항상 이번 달 예산부터 보여줍니다.
+      setBudgetYearMonth(getCurrentYearMonth());
     }
     if (openSection !== 'notification') {
       setTestResult(null);
@@ -113,12 +133,14 @@ export default function MoreTab({ onReset }: MoreTabProps) {
     }
   }, [openSection]);
 
-  // ── 현재 월 예산 조회 ─────────────────────────────────────────
+  // ── 선택된 연월 예산 조회 ────────────────────────────────────
+  // budgetYearMonth 가 바뀔 때마다 (← → 버튼 클릭 시) 자동으로 재실행됩니다.
   useEffect(() => {
-    getBudget(yearMonth)
+    setCurrentBudget(null); // 이전 달 금액이 잠깐 보이는 것을 방지
+    getBudget(budgetYearMonth)
       .then(b => setCurrentBudget(b.amount))
       .catch(() => setCurrentBudget(null));
-  }, [yearMonth]);
+  }, [budgetYearMonth]);
 
   // ── LINE 알림 설정 + 수신자 목록 조회 (마운트 시 1회) ─────────
   useEffect(() => {
@@ -184,7 +206,8 @@ export default function MoreTab({ onReset }: MoreTabProps) {
 
     setBudgetLoading(true);
     try {
-      const b = await setBudget(yearMonth, amount);
+      // yearMonth(상수) → budgetYearMonth(상태): 선택된 달에 예산을 저장합니다.
+      const b = await setBudget(budgetYearMonth, amount);
       setCurrentBudget(b.amount);
       setBudgetSuccess(true);
       setTimeout(() => { setBudgetSuccess(false); setOpenSection(null); setBudgetInput(''); }, 1500);
@@ -424,16 +447,17 @@ export default function MoreTab({ onReset }: MoreTabProps) {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 현재 연월 레이블 (언어에 따라 포맷 변경)
+  // 선택된 연월 레이블 (언어에 따라 포맷 변경)
   // ─────────────────────────────────────────────────────────────
-  const [ym_year, ym_month] = yearMonth.split('-');
-  const yearMonthLabel = formatYearMonth(ym_year, ym_month);
+  // budgetYearMonth 가 바뀔 때마다 레이블도 자동으로 갱신됩니다.
+  const [bym_year, bym_month] = budgetYearMonth.split('-');
+  const budgetYearMonthLabel = formatYearMonth(bym_year, bym_month);
 
   // ─────────────────────────────────────────────────────────────
   // 메인 메뉴 화면
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-full px-4 pt-6 pb-8 gap-3">
+    <div className="flex flex-col min-h-full px-4 pt-6 pb-4 gap-2">
 
       {/* ── 1. PIN 번호 변경 ─────────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
@@ -497,6 +521,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
 
       {/* ── 2. 예산 설정 ─────────────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
+        {/* 헤더: 선택 중인 달을 표시, 클릭 시 아코디언 열기/닫기 */}
         <button
           className="w-full flex items-center justify-between px-4 py-4"
           onClick={() => toggleSection('budget')}
@@ -505,7 +530,7 @@ export default function MoreTab({ onReset }: MoreTabProps) {
             <span>💰</span>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {t('moreBudget')} ({yearMonthLabel})
+                {t('moreBudget')} ({budgetYearMonthLabel})
               </span>
               {currentBudget !== null && (
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -520,8 +545,33 @@ export default function MoreTab({ onReset }: MoreTabProps) {
         </button>
 
         {openSection === 'budget' && (
-          <div className="px-4 pb-4 flex flex-col gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
-            <div className="pt-3 flex flex-col gap-1">
+          <div className="px-4 pb-3 flex flex-col gap-2 border-t" style={{ borderColor: 'var(--border)' }}>
+
+            {/* 연월 선택기: ← 이전달  2026년 7월  다음달 → */}
+            {/* 이 버튼들은 아코디언 헤더 바깥(본체 안)에 있으므로 stopPropagation 불필요 */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => { setBudgetYearMonth(prev => prevMonth(prev)); setBudgetInput(''); }}
+                className="px-3 py-1.5 rounded-lg text-sm font-bold"
+                style={{ color: 'var(--accent)', backgroundColor: 'var(--bg-secondary)' }}
+                aria-label="이전 달"
+              >
+                ‹
+              </button>
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {budgetYearMonthLabel}
+              </span>
+              <button
+                onClick={() => { setBudgetYearMonth(prev => nextMonth(prev)); setBudgetInput(''); }}
+                className="px-3 py-1.5 rounded-lg text-sm font-bold"
+                style={{ color: 'var(--accent)', backgroundColor: 'var(--bg-secondary)' }}
+                aria-label="다음 달"
+              >
+                ›
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1">
               <label className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('moreBudgetTarget')}</label>
               <input
                 type="text"
