@@ -576,6 +576,176 @@ const response = await anthropic.messages.create({
 
 ---
 
+### Phase 20: UX·기능 개선 4종
+
+#### 20-1. 예산 연월 선택 — 월별 예산 개별 설정
+
+**배경**
+
+현재 더보기 탭의 예산 설정은 "현재 월" 고정으로, 다른 달의 예산을 미리 설정하거나 수정할 수 없습니다.
+백엔드 `PUT /budgets/:yearMonth` 는 이미 연월별로 분리되어 있으므로 **프론트엔드만 수정**하면 됩니다.
+
+**사용자 흐름**
+
+```
+더보기 탭 → 예산 섹션
+  → 현재: "이번 달 예산" 고정 표시
+  → 변경: ← 2026년 5월 → 형태의 월 선택기 추가
+  → 선택한 연월의 예산을 조회(GET) / 저장(PUT)
+  → 연월마다 다른 예산 금액 설정 가능
+```
+
+**구현 방향**
+
+- `MoreTab.tsx` 예산 섹션에 연월 선택기 UI 추가
+  - `←` / `→` 버튼으로 월 이동
+  - 현재 월이 기본값
+- 선택된 연월 상태(`budgetYearMonth`)를 별도 관리
+- `getBudget(yearMonth)` / `setBudget(yearMonth, amount)` 호출 시 선택 연월 전달
+- 번역 키 추가: `moreBudgetMonth` (선택 중인 연월 레이블)
+
+**완료 체크리스트**
+
+- [ ] `MoreTab.tsx` 예산 섹션에 연월 선택기 추가
+- [ ] 선택 연월 기준 GET/PUT 연동
+- [ ] 번역 키 추가 (KO/JA)
+- [ ] 공부용 Documents 파일 작성
+
+---
+
+#### 20-2. 모달 드래그 닫기 범위 확장
+
+**배경**
+
+현재 바텀 시트의 드래그 닫기는 상단 핸들 바(좁은 띠)에만 `onTouchStart`가 연결되어 있습니다.
+실사용에서 핸들 바를 정확히 잡기 어려워 UX가 불편합니다.
+
+**목표**
+
+모달 시트 **상단 1/2 영역 전체**에서 아래 방향 드래그 시 닫기 제스처 작동.
+단, 내부 입력 요소(텍스트 input, 카테고리 칩, 스크롤 영역)와의 터치 충돌 방지 처리 필요.
+
+**대상 컴포넌트**
+
+| 컴포넌트 | 현재 핸들 영역 |
+|----------|--------------|
+| `TransactionForm.tsx` | 상단 핸들 바만 |
+| `TransactionDetailSheet.tsx` | 상단 핸들 바만 |
+| `CalendarTab.tsx` 날짜 상세 시트 | 상단 핸들 바만 |
+
+**구현 방향**
+
+- 시트 본체(`sheetRef`) 상단 절반 영역에 `onTouchStart` 핸들러 추가
+- 터치 시작 Y 좌표가 시트 높이의 50% 이내일 때만 드래그 닫기 활성화
+- 입력 요소(`input`, `textarea`, `button`) 위에서 시작된 터치는 드래그 제외
+
+```typescript
+const handleSheetTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const sheetHeight = sheetRef.current?.getBoundingClientRect().height ?? 0;
+  const touchY = e.touches[0].clientY - (sheetRef.current?.getBoundingClientRect().top ?? 0);
+  const target = e.target as HTMLElement;
+  const isInteractive = target.closest('input, textarea, button, select');
+  if (touchY < sheetHeight / 2 && !isInteractive) {
+    dragStartY.current = e.touches[0].clientY;
+    setIsDragging(true);
+  }
+};
+```
+
+**완료 체크리스트**
+
+- [ ] `TransactionForm.tsx` 드래그 범위 확장
+- [ ] `TransactionDetailSheet.tsx` 드래그 범위 확장
+- [ ] `CalendarTab.tsx` 날짜 시트 드래그 범위 확장
+- [ ] 입력 요소 터치 충돌 방지 검증
+- [ ] 공부용 Documents 파일 작성
+
+---
+
+#### 20-3. 통계 화면 총계 탭 추가
+
+**배경**
+
+현재 통계 탭은 지출 카테고리별 / 수입 카테고리별 두 탭만 있습니다.
+해당 월의 전체 현황(총 수입, 총 지출, 순수익, 예산 대비 잔액)을 한눈에 볼 수 있는 뷰가 없습니다.
+
+**목표**
+
+`전체` 탭을 추가하여 월 전체 요약 정보를 표시합니다.
+
+**표시 항목**
+
+| 항목 | 설명 |
+|------|------|
+| 총 수입 | 해당 월 수입 합계 |
+| 총 지출 | 해당 월 지출 합계 |
+| 순수익 | 수입 − 지출 (±표시) |
+| 예산 | 설정된 월 예산 금액 |
+| 예산 잔액 | 예산 − 지출 (미설정 시 비표시) |
+| 예산 진행률 | 지출/예산 퍼센트 진행 바 |
+
+**구현 방향**
+
+- `StatsTab.tsx` 탭 목록에 `전체(全体)` 탭 추가 (기존 지출·수입 앞 또는 뒤)
+- 총계 데이터는 이미 `transactions` 목록에서 계산 가능 — 추가 API 불필요
+- 예산은 `getBudget(yearMonth)` 기존 API 호출
+- 번역 키 추가: `statsTotal`, `statsTotalIncome`, `statsTotalExpense`, `statsNet`, `statsBudget`, `statsBudgetRemain`
+
+**완료 체크리스트**
+
+- [ ] `StatsTab.tsx` 총계 탭 UI 구현
+- [ ] 수입·지출·순수익·예산·잔액 계산 및 표시
+- [ ] 예산 미설정 시 예산 관련 항목 비표시
+- [ ] 번역 키 추가 (KO/JA)
+- [ ] 공부용 Documents 파일 작성
+
+---
+
+#### 20-4. 홈 화면 월 잔액 표시
+
+**배경**
+
+홈 탭 상단에는 수입·지출 합계가 표시되지만, "이번 달 예산 대비 얼마나 남았는지"를 직관적으로 확인할 수 없습니다.
+
+**목표**
+
+홈 탭 상단 카드에 예산 잔액 및 진행 바를 추가합니다.
+
+**표시 항목**
+
+```
+┌─────────────────────────────┐
+│  2026년 6월                  │
+│  수입  ¥120,000              │
+│  지출  ¥ 85,000              │
+│  합계  ¥ 35,000              │  ← 수입 − 지출 (순수익, ±표시)
+│  ─────────────────────────  │
+│  예산 ¥100,000 중 ¥15,000 남음│  ← 예산 − 지출
+│  [████████████░░░░] 85%     │  ← 예산 진행 바
+└─────────────────────────────┘
+```
+
+- 합계(순수익) = 수입 − 지출, 항상 표시
+- 예산 잔액 = 예산 − 지출, 예산 미설정 시 해당 행 비표시
+- 예산 초과 시 잔액을 `var(--expense)` 색상으로 강조, 진행 바 100% 표시
+
+**구현 방향**
+
+- `HomeTab.tsx` 상단 요약 카드에 합계·예산 정보 추가
+- 합계는 기존 수입·지출 데이터로 계산 — 추가 API 불필요
+- `getBudget(yearMonth)` 호출 — 기존 API 재사용
+- 번역 키 추가: `homeNet`, `homeBudgetRemain`, `homeBudgetOver`
+
+**완료 체크리스트**
+
+- [ ] `HomeTab.tsx` 예산 잔액 표시 UI 추가
+- [ ] 예산 진행 바 구현
+- [ ] 예산 미설정 / 초과 케이스 처리
+- [ ] 번역 키 추가 (KO/JA)
+- [ ] 공부용 Documents 파일 작성
+
+---
+
 ## Phase Dev (긴급): 개발 환경 구축 — 운영/개발 완전 분리
 
 ### 배경 및 목표
